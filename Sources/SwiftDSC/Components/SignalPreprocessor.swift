@@ -9,7 +9,7 @@ import Accelerate
 import Foundation
 import SignalTools
 
-// Processes the signal prior to energy detection.
+/// Processes the signal prior to energy detection.
 package class SignalPreprocessor {
     
     var inputSampleRate: Int

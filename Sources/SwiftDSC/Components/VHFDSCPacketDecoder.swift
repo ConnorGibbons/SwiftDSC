@@ -1,0 +1,63 @@
+//
+//  PacketDecoder.swift
+//  SwiftDSC
+//
+//  Created by Connor Gibbons  on 8/26/25.
+//
+
+// Extracts bit-level info from DSC packet samples
+
+import Foundation
+import SignalTools
+
+/// PacketDecoder for VHF DSC packets -- frequency modulated AFSK.
+/// Uses AFSK demodulator from SignalTools
+package class VHFDSCPacketDecoder {
+    var sampleRate: Int
+    var samplesPerSymbol: Int {
+        sampleRate / 1200
+    }
+    let markCoeff: Float
+    let spaceCoeff: Float
+    
+    var debugOutput: Bool
+    
+    init(sampleRate: Int, isVHF: Bool = true, debugOutput: Bool = false) {
+        self.sampleRate = sampleRate
+        self.debugOutput = debugOutput
+        self.markCoeff = getGoertzelCoeff(targetFrequency: 1300, sampleRate: sampleRate)
+        self.spaceCoeff = getGoertzelCoeff(targetFrequency: 2100, sampleRate: sampleRate)
+    }
+    
+    /// Decodes DSCSymbol array from samples .
+    /// The 'samples' input should be FM-demodulated, not raw IQ.
+    /// Returns array of DSCSymbols. Edits a buffer to store context of leftover bits not yet added to a symbol.
+    func decodeToSymbols(samples: [Float], context: inout BitBuffer) -> [DSCSymbol]? {
+        guard let (bits, _) = demodulateToBits(samples: samples) else { return nil }
+        var resultSymbols: [DSCSymbol] = []
+        var currBitstring: String = context.getBitstring()
+        for i in 0..<bits.count {
+            currBitstring.append(String(bits[i]))
+            if(currBitstring.count == 10) {
+                let asUInt16: UInt16 = UInt16(currBitstring, radix: 2) ?? 0
+                resultSymbols.append(DSCSymbol(code: asUInt16))
+                currBitstring = ""
+            }
+        }
+        for bit in currBitstring { // Adding remaining bits to context
+            bit == "0" ? context.append(0) : context.append(1)
+        }
+        return resultSymbols
+    }
+    
+    func demodulateToBits(samples: [Float]) -> (BitBuffer, [Float])? {
+        return afskDemodulate(samples: samples, sampleRate: self.sampleRate, baud: 1200, markCoeff: markCoeff, spaceCoeff: spaceCoeff)
+    }
+    
+    private func debugPrint(_ str: String) {
+        if(self.debugOutput) {
+            print(str)
+        }
+    }
+    
+}

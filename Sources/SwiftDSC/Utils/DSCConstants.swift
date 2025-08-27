@@ -12,11 +12,12 @@ package enum DSCError: Error {
 package struct DSCSymbol {
     var code: UInt16
     var codeBinaryString: String
-    var symbol: UInt8
+    var symbol: UInt8?
+    var codeIsValid: Bool { symbol != nil }
     
-    init(code: UInt16) throws {
+    init(code: UInt16) {
         self.code = code
-        guard let symbol = DSC_CODE_TO_SYMBOL[code] else { throw DSCError.invalidSymbol }
+        let symbol = DSC_CODE_TO_SYMBOL[code]
         self.symbol = symbol
         self.codeBinaryString = stringifyDSCCode(code)
     }

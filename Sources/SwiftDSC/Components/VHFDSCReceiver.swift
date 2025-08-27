@@ -49,6 +49,9 @@ public class VHFDSCReceiver {
     // Components
     package let energyDetector: EnergyDetector
     package let preprocessor: SignalPreprocessor
+    package let processor: SignalProcessor
+    package let decoder: VHFDSCPacketDecoder
+    package let synchronizer: VHFDSCPacketSynchronizer
     
     public init(inputSampleRate: Int, internalSampleRate: Int) throws {
         guard inputSampleRate >= internalSampleRate else {
@@ -75,6 +78,9 @@ public class VHFDSCReceiver {
         // Components
         self.energyDetector = EnergyDetector(sampleRate: internalSampleRate, bufferDuration: 1, windowSize: 0.025, resistance: 0.5)
         self.preprocessor = SignalPreprocessor(inputSampleRate: inputSampleRate, outputSampleRate: internalSampleRate)
+        self.processor = try SignalProcessor(sampleRate: internalSampleRate)
+        self.decoder = VHFDSCPacketDecoder(sampleRate: internalSampleRate)
+        self.synchronizer = VHFDSCPacketSynchronizer(sampleRate: internalSampleRate, decoder: decoder)
     }
     
     package func getHighEnergyTimes(_ signal: [DSPComplex]) -> [(Double, Double)] {

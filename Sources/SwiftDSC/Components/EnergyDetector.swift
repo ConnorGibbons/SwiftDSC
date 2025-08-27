@@ -29,10 +29,10 @@ package class EnergyDetector {
             self.buffer = RingBuffer<DSPComplex>.init(defaultVal: .init(real: 0, imag: 0), size: Int(Double(sampleRate) * bufferDuration!))
         }
         if windowSize == nil {
-            self.windowSize = Int(Double(sampleRate) * windowSize!)
+            self.windowSize = Int(Double(sampleRate) * 0.025)
         }
         else {
-            self.windowSize = Int(Double(sampleRate) * 0.025)
+            self.windowSize = Int(Double(sampleRate) * windowSize!)
         }
     }
     

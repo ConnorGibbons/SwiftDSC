@@ -9,7 +9,7 @@ package enum DSCError: Error {
     case invalidSymbol
 }
 
-package struct DSCSymbol {
+package struct DSCSymbol: Equatable{
     var code: UInt16
     var codeBinaryString: String
     var symbol: UInt8?
@@ -21,6 +21,18 @@ package struct DSCSymbol {
         self.symbol = symbol
         self.codeBinaryString = stringifyDSCCode(code)
     }
+    
+    init?(symbol: UInt8) {
+        guard let code = DSC_SYMBOL_TO_CODE[symbol] else { return nil }
+        self.code = code
+        self.symbol = symbol
+        self.codeBinaryString = stringifyDSCCode(code)
+    }
+    
+    package static func == (lhs: DSCSymbol, rhs: DSCSymbol) -> Bool {
+        return lhs.code == rhs.code
+    }
+    
 }
 
 package func reverseBits(_ n: UInt8) -> UInt8 {

@@ -17,6 +17,7 @@ package class SignalPreprocessor {
     var filters: [Filter]
     let debugOutput: Bool
     var debugOutputPath: String = "/tmp/debugOutput.csv"
+    var downsampler: Downsampler
     
     init(inputSampleRate: Int, outputSampleRate: Int, debugOutput: Bool = false) {
         let defaultCoarseFilter = IIRFilter().addLowpassFilter(sampleRate: inputSampleRate, frequency: 10000, q: 0.707)
@@ -24,6 +25,7 @@ package class SignalPreprocessor {
         self.outputSampleRate = outputSampleRate
         self.filters = [defaultCoarseFilter]
         self.debugOutput = debugOutput
+        self.downsampler = Downsampler(inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate)!
     }
     
     init(inputSampleRate: Int, outputSampleRate: Int, filters: [Filter], debugOutput: Bool = false) {
@@ -31,6 +33,7 @@ package class SignalPreprocessor {
         self.outputSampleRate = outputSampleRate
         self.filters = filters
         self.debugOutput = debugOutput
+        self.downsampler = Downsampler(inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate)! // Going to have to remove these force unwraps at some point
     }
     
     // Note that while this returns a new array, it does modify the original!
@@ -50,9 +53,8 @@ package class SignalPreprocessor {
     }
     
     func resampleSignal(_ signal: [DSPComplex]) -> [DSPComplex] {
-        let antiAliasingFilter = try! FIRFilter(type: .lowPass, cutoffFrequency: Double(outputSampleRate / 2), sampleRate: inputSampleRate, tapsLength: 15)
-        let resampled = downsampleComplex(iqData: signal, decimationFactor: inputSampleRate / outputSampleRate, filter: antiAliasingFilter.getTaps())
-        return resampled
+        let resampled = downsampler.downsampleComplex(signal)
+        return resampled!
     }
     
     func addFilter(_ filter: Filter) {

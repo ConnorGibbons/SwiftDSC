@@ -14,8 +14,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ConnorGibbons/SignalTools",
       "state" : {
-        "branch" : "c671c71",
-        "revision" : "c671c71d0f3e45aad80f9a6dd419c18a3736fa9e"
+        "revision" : "70c15c5e659b009fb2c3276e6a72b1e31295ea1e"
       }
     }
   ],

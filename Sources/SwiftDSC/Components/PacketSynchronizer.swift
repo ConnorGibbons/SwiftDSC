@@ -11,6 +11,19 @@ import SignalTools
 import RTLSDRWrapper // for TimeOperation
 
 // VHF DSC Dot Pattern: 0101... 20 bits
+let DOT_PATTERN_CORRELATION_TEMPLATE: [Float] = {
+    var pattern: [Float] = []
+    for i in 0..<10 {
+        pattern.append(-1)
+        pattern.append(1)
+    }
+    return pattern
+}()
+let DSC_PHASING_SEQ_DX_SYMBOL = DSCSymbol(symbol: 125)!
+let DX_PHASING_SEQUENCE: [DSCSymbol] = .init(repeating: DSC_PHASING_SEQ_DX_SYMBOL, count: 6)
+let RX_PHASING_SEQUENCE: [DSCSymbol] = [DSCSymbol(symbol: 111)!, DSCSymbol(symbol: 110)!, DSCSymbol(symbol: 109)!, DSCSymbol(symbol: 108)!, DSCSymbol(symbol: 107)!, DSCSymbol(symbol: 106)!, DSCSymbol(symbol: 105)!, DSCSymbol(symbol: 104)!]
+let EOS_SYMBOLS: [DSCSymbol] = [DSCSymbol(symbol: 117)!, DSCSymbol(symbol: 122)!, DSCSymbol(symbol: 127)!]
+
 
 /// DSC-specific tool for finding the coarse & finer start of a DSC transmission.
 package class VHFDSCPacketSynchronizer {
@@ -30,32 +43,82 @@ package class VHFDSCPacketSynchronizer {
     
     /// Will find the starting index of the VHF DSC dot pattern, '0101..' for 20 bits.
     /// **audio**: FM-demodulated samples.
-    /// If unable to find a sequence where alternating rate  >0.85, returns nil. 
     func findDotPatternStart(audio: [Float]) -> Int? {
-        var bestConfidence = -Float.infinity
-        var bestConfidenceIndex: Int?
-        for i in 0..<(audio.count - (20 * samplesPerSymbol)) {
-            var timeDemodulate = TimeOperation.init(operationName: "Demodulation (20 bits)")
-            if let (bits, confidenceArray) = self.decoder.demodulateToBits(samples: Array(audio[i..<i+(20 * samplesPerSymbol)])) {
-                //print(timeDemodulate.stop())
-                var timeAlternating = TimeOperation.init(operationName: "Alternating check (20 bits)")
-                let alternatingRate = alternatingRate(bits)
-                //print(timeAlternating.stop())
-                if(alternatingRate > 0.9) {
-                    //print("rate > 0.9")
-                    let averageConfidence = confidenceArray.average()
-                    if(averageConfidence > bestConfidence) {
-                        bestConfidence = averageConfidence
-                        bestConfidenceIndex = i
-                    }
-                }
-            } else { continue }
+        // Theory: For i = 0 ... samplesPerSymbol, calculate the bitstream starting from i. One of these will be at the correct offset to eventually decode the dot pattern, if present.
+        // Afterwards, correlate each bitstream for the dot pattern, look for highest peak, this is the likely start
+        let numOffsets = samplesPerSymbol
+        var bitstreams: [[Float]] = Array(repeating: [], count: numOffsets)
+        for i in 0..<numOffsets {
+            let currSamples = Array(audio[i..<audio.count])
+            if let (bitstream, _, _) = decoder.demodulateToBits(samples: currSamples) {
+                bitstreams[i] = bitstream.asFloatArray()
+            }
         }
-        return bestConfidenceIndex
+        
+        // Finding correlations for bits calculated from each offset.
+        // Whichever has the highest correlation is likely aligned with bit boundaries properly.
+        // Highest correlation location will be taken to be the beginning of the dot pattern.
+        var correlations: [[Float]] = Array(repeating: [], count: numOffsets)
+        for i in 0..<bitstreams.count {
+            correlations[i] = slidingCorrelation(signal: bitstreams[i], template: DOT_PATTERN_CORRELATION_TEMPLATE) ?? []
+        }
+        var correlationIndicesAndValues: [(Int, Float)] = []
+        for i in 0..<correlations.count {
+            let currCorrelationIndicesAndValues = correlations[i].topKIndicesWithValues(2).map {
+                ((samplesPerSymbol * $0.0) + i, $0.1)
+            }
+            correlationIndicesAndValues.append(contentsOf: currCorrelationIndicesAndValues)
+        }
+        correlationIndicesAndValues.sort { $0.1 > $1.1 } // Putting largest correlations first
+        
+        var likelyStartsAndConfidences: [(Int, Float)] = []
+        for (index, _) in correlationIndicesAndValues {
+            if let bitsFromIndex = decoder.demodulateToBits(samples: Array(audio[index..<(index + 20 * samplesPerSymbol)])) {
+                let alternatingRate = alternatingRate(bitsFromIndex.0)
+                if(alternatingRate > 0.85) {
+                    likelyStartsAndConfidences.append((index, bitsFromIndex.1.average()))
+                }
+            }
+        }
+        likelyStartsAndConfidences.sort { $0.1 > $1.1 }
+        return likelyStartsAndConfidences.first?.0
     }
     
-    func getPreciseStartingSample(angle: [Float], offset: Int) -> Int {
-        return -1
+    /// Given a dotPatternIndex, will try to find a starting sample that is aligned with the first symbol, 125.
+    /// Therefore, decoding from this sample on, each (10 x samplesPerBit) samples will be a symbol in the message.
+    func getPreciseStartingSample(audio: [Float], dotPatternIndex: Int) -> Int? {
+        let maxSampleShift = self.samplesPerSymbol / 2 // Maxmimum distance from dotPatternIndex to try shifting & redecoding.
+        
+        var potentialStarts: [(Int, Float)] = [] // Array of indexes from which starting here results in finding 125. Second element is average decision confidence.
+        for shift in stride(from: -maxSampleShift, through: maxSampleShift, by: 1) {
+            let potentialStartIndex = dotPatternIndex + shift
+            guard potentialStartIndex >= 0 else { continue }
+            let endSampleIndex = potentialStartIndex + (30 * samplesPerSymbol) // '125' should be in first 30 bits (20 dot pattern + 10 symbol)
+            guard endSampleIndex < audio.count else { continue }
+            let audioFromStart = Array(audio[potentialStartIndex..<endSampleIndex])
+            guard let (bitsFromStart, confidences, _) = self.decoder.demodulateToBits(samples: audioFromStart) else { continue }
+            let bitstringFromStart = bitsFromStart.getBitstring()
+            guard let indexRangeOfStartSymbol = bitstringFromStart.range(of: "1011111001") else { continue }
+            let numberOfSamplesToSkip = bitstringFromStart.distance(from: bitstringFromStart.startIndex, to: indexRangeOfStartSymbol.lowerBound) * samplesPerSymbol
+            potentialStarts.append(((dotPatternIndex + numberOfSamplesToSkip), confidences.average()))
+        }
+        
+        potentialStarts.sort { $0.1 > $1.1 } // Sorting by confidence, descending from index 0.
+        return potentialStarts.first?.0
+    }
+    
+    /// Checks if lock has been acquired -- meaning full phasing sequence has been recieved.
+    /// Worth noting that matcing *all* symbols is significantly stricter than what the spec calls for
+    func lockIsAcquired(dx: [DSCSymbol], rx: [DSCSymbol]) -> Bool {
+        guard dx.count >= 8 && rx.count >= 8 else { return false } // Phasing sequence occupies first 16 symbols
+        let relevantDX = Array(dx[0..<6])
+        let relevantRX = Array(rx[0..<8])
+        return relevantDX == DX_PHASING_SEQUENCE && relevantRX == RX_PHASING_SEQUENCE
+    }
+    
+    /// Checks if dx has any of the EOS symbols.
+    func reachedEndSequence(dx: [DSCSymbol]) -> Bool {
+        return dx.contains(where: { symbol in EOS_SYMBOLS.contains(symbol)})
     }
     
     private func getSignificantExtremaIndicies(angle: [Float], useMax: Bool = true) -> [Int] {

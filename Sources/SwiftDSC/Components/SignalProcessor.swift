@@ -16,13 +16,14 @@ package class SignalProcessor {
     var rawFilters: [FIRFilter] = []
     var impulseFilters: [FIRFilter] = []
     var angleFilters: [FIRFilter] = []
+    var complexContext: DSPComplex? = nil // Used to provide context for the frequency over time function so the first output isn't dropped.
     
     var debugOutput: Bool
     
     init(sampleRate: Int, debugOutput: Bool = false) throws {
         self.sampleRate = sampleRate
         let defaultFinerFilter = try FIRFilter(type: .lowPass, cutoffFrequency: 5000, sampleRate: sampleRate, tapsLength: 31)
-        let defaultImpulseFilter = try FIRFilter(type: .lowPass, cutoffFrequency: 2500, sampleRate: sampleRate, tapsLength: 15)
+        let defaultImpulseFilter = try FIRFilter(type: .lowPass, cutoffFrequency: 3000, sampleRate: sampleRate, tapsLength: 31)
         self.rawFilters = [defaultFinerFilter]
         self.impulseFilters = [defaultImpulseFilter]
         self.angleFilters = []
@@ -44,11 +45,16 @@ package class SignalProcessor {
     }
     
     func frequencyOverTime(_ signal: [DSPComplex]) -> [Float] {
-        let radianDiffs = demodulateFM(signal)
+        var input = signal
+        if let context = complexContext {
+            input.insert(context, at: 0)
+        }
+        let radianDiffs = demodulateFM(input)
         var frequencies = radToFrequency(radDiffs: radianDiffs, sampleRate: self.sampleRate)
         for filter in impulseFilters {
-            filter.filtfilt(&frequencies)
+            filter.filteredSignal(&frequencies)
         }
+        complexContext = signal.last ?? nil
         return frequencies
     }
     

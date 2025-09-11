@@ -10,7 +10,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ConnorGibbons/RTLSDRWrapper", from: "1.0.1"),
-        .package(url: "https://github.com/ConnorGibbons/SignalTools", revision: "c671c71")
+        .package(url: "https://github.com/ConnorGibbons/SignalTools", revision: "70c15c5e659b009fb2c3276e6a72b1e31295ea1e")
     ],
     targets: [
         .executableTarget(

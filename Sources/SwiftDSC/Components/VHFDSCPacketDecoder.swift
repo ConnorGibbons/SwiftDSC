@@ -9,6 +9,7 @@
 
 import Foundation
 import SignalTools
+import Accelerate
 
 /// PacketDecoder for VHF DSC packets -- frequency modulated AFSK.
 /// Uses AFSK demodulator from SignalTools
@@ -31,9 +32,11 @@ package class VHFDSCPacketDecoder {
     
     /// Decodes DSCSymbol array from samples .
     /// The 'samples' input should be FM-demodulated, not raw IQ.
-    /// Returns array of DSCSymbols. Edits a buffer to store context of leftover bits not yet added to a symbol.
-    func decodeToSymbols(samples: [Float], context: inout BitBuffer) -> [DSCSymbol]? {
-        guard let (bits, _) = demodulateToBits(samples: samples) else { return nil }
+    /// Returns an optional tuple (nil if demodulation failed):
+    /// Element 0: [DSCSymbol] containing each decoded symbol.
+    /// Element 1: [Float] containing the remainder samples that weren't used to determine a bit. Should be stored and prepended to future samples to avoid timing error / missing bits.
+    func decodeToSymbols(samples: [Float], context: inout BitBuffer) -> ([DSCSymbol], [Float])? {
+        guard let (bits, _, leftoverSamples) = demodulateToBits(samples: samples) else { return nil }
         var resultSymbols: [DSCSymbol] = []
         var currBitstring: String = context.getBitstring()
         for i in 0..<bits.count {
@@ -47,13 +50,22 @@ package class VHFDSCPacketDecoder {
         for bit in currBitstring { // Adding remaining bits to context
             bit == "0" ? context.append(0) : context.append(1)
         }
-        return resultSymbols
+        return (resultSymbols, leftoverSamples)
     }
     
-    func demodulateToBits(samples: [Float]) -> (BitBuffer, [Float])? {
-        return afskDemodulate(samples: samples, sampleRate: self.sampleRate, baud: 1200, markCoeff: markCoeff, spaceCoeff: spaceCoeff)
+    /// Demodulates audio samples to bits using AFSK demodulation.
+    /// Returns an optional tuple (nil if demodulation failed):
+    /// Element 0: BitBuffer containing demodulated bits.
+    /// Element 1: [Float] containing the confidence rating for each bit decision.
+    /// Element 2: [Float] containing the remainder samples that weren't used. (Leftover after last bit decision is made, and not enough samples to decide next bit)
+    func demodulateToBits(samples: [Float]) -> (BitBuffer, [Float], [Float])? {
+        guard let (demodulatedBits, confidenceArray) = afskDemodulate(samples: samples, sampleRate: self.sampleRate, baud: 1200, markCoeff: markCoeff, spaceCoeff: spaceCoeff) else { return nil }
+        let leftoverCount = samples.count % Int(self.sampleRate / 1200)
+        let leftoverSamples = leftoverCount == 0 ? [] : Array(samples[samples.count - leftoverCount ..< samples.count])
+        return (demodulatedBits, confidenceArray, leftoverSamples)
     }
     
+    /// Prints only if self.debugOutput is true.
     private func debugPrint(_ str: String) {
         if(self.debugOutput) {
             print(str)

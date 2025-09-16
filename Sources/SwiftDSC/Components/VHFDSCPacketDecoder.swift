@@ -39,6 +39,7 @@ package class VHFDSCPacketDecoder {
         guard let (bits, _, leftoverSamples) = demodulateToBits(samples: samples) else { return nil }
         var resultSymbols: [DSCSymbol] = []
         var currBitstring: String = context.getBitstring()
+        context = BitBuffer()
         for i in 0..<bits.count {
             currBitstring.append(String(bits[i]))
             if(currBitstring.count == 10) {

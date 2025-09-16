@@ -23,7 +23,7 @@ package class SignalProcessor {
     init(sampleRate: Int, debugOutput: Bool = false) throws {
         self.sampleRate = sampleRate
         let defaultFinerFilter = try FIRFilter(type: .lowPass, cutoffFrequency: 5000, sampleRate: sampleRate, tapsLength: 31)
-        let defaultImpulseFilter = try FIRFilter(type: .lowPass, cutoffFrequency: 3000, sampleRate: sampleRate, tapsLength: 31)
+        let defaultImpulseFilter = try FIRFilter(type: .lowPass, cutoffFrequency: 2500, sampleRate: sampleRate, tapsLength: 13)
         self.rawFilters = [defaultFinerFilter]
         self.impulseFilters = [defaultImpulseFilter]
         self.angleFilters = []

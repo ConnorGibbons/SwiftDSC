@@ -121,6 +121,16 @@ package class VHFDSCPacketSynchronizer {
         return dx.contains(where: { symbol in EOS_SYMBOLS.contains(symbol)})
     }
     
+    /// Checks if full DSC message has been received. If it has, returns the error checking character. Otherwise nil.
+    func checkIfComplete(dx: [DSCSymbol], rx: [DSCSymbol]) -> DSCSymbol? {
+        guard let eosSymbolIndex = dx.firstIndex(where: { symbol in EOS_SYMBOLS.contains(symbol)}) else { return nil }
+        let eosSymbol = dx[eosSymbolIndex]
+        let eosCount = dx.count(where: {$0 == eosSymbol})
+        guard eosCount >= 3 else { return nil }
+        let errorCheckSymbol = dx[eosSymbolIndex + 1]
+        return errorCheckSymbol
+    }
+    
     private func getSignificantExtremaIndicies(angle: [Float], useMax: Bool = true) -> [Int] {
         let indicies = useMax ? angle.localMaximaIndicies() : angle.localMinimaIndicies()
         return indicies.filter {

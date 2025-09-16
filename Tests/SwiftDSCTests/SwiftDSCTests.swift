@@ -191,20 +191,10 @@ final class SwiftDSCTests: XCTestCase {
         // With dot pattern and precise start found, now looking for full phasing sequence.
         testReceiver.processSamples(phasingSequence)
         
-        
-        let otherTestReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: useSampleRate)
-        var copy960k = samples960k
-        let processed = otherTestReceiver.preprocessor.processSignal(&copy960k)
-        let audio = otherTestReceiver.processor.frequencyOverTime(processed)
-        
         XCTAssert(testReceiver.state == .locked)
+        let restOfSamples = Array(samples960k[phasingSequenceEndSample...])
+        testReceiver.processSamples(restOfSamples)
         
-    }
-    
-    func testVHFDSC() throws {
-        guard let samples960k = SwiftDSCTests.testCall960k else { XCTFail("D"); return }
-        let testReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: 12000)
-        testReceiver.processSamples(samples960k)
     }
     
 }

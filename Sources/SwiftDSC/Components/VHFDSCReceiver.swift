@@ -53,7 +53,9 @@ public class VHFDSCReceiver {
     // State
     var state: DSCReveiverState
     var dx: [DSCSymbol] = []
+    var dxConfirmed: [DSCSymbol] = [] // Storage for dx symbols that have passed errror checking / resolution.
     var rx: [DSCSymbol] = []
+    var totalSymbolsReceived: Int = 0
     var bitCache: BitBuffer
     var audioCache: [Float]
     var retryCurrentTaskCounter: Int = 0
@@ -67,6 +69,7 @@ public class VHFDSCReceiver {
     package let processor: SignalProcessor
     package let decoder: VHFDSCPacketDecoder
     package let synchronizer: VHFDSCPacketSynchronizer
+    package let validator: PacketValidator
     
     public init(inputSampleRate: Int, internalSampleRate: Int) throws {
         guard inputSampleRate >= internalSampleRate else {
@@ -77,7 +80,7 @@ public class VHFDSCReceiver {
             throw DSCErrors.sampleRateMismatch
         }
         guard internalSampleRate % 1200 == 0 else {
-            print("Internal sample rate must be a multiple of 9600 (AIS Baud)")
+            print("Internal sample rate must be a multiple of 1200 (DSC Baud)")
             throw DSCErrors.sampleRateMismatch
         }
         
@@ -88,7 +91,9 @@ public class VHFDSCReceiver {
         // State
         self.state = .waiting
         self.dx = []
+        self.dxConfirmed = []
         self.rx = []
+        self.totalSymbolsReceived = 0
         self.bitCache = BitBuffer()
         self.audioCache = []
         
@@ -98,6 +103,7 @@ public class VHFDSCReceiver {
         self.processor = try SignalProcessor(sampleRate: internalSampleRate)
         self.decoder = VHFDSCPacketDecoder(sampleRate: internalSampleRate)
         self.synchronizer = VHFDSCPacketSynchronizer(sampleRate: internalSampleRate, decoder: decoder)
+        self.validator = PacketValidator()
     }
     
     public func processSamples(_ samples: [DSPComplex]) {
@@ -119,13 +125,14 @@ public class VHFDSCReceiver {
     }
     
     private func processAudio(_ audio: [Float]) {
-        var audioMutableCopy = audio
         switch state {
         case .waiting:
             print("Hit a disallowed case -- processAudio called while state is 'waiting'.")
             return
         case .unlocked:
-            unlockedAudioHandler(audio: audio)
+            unlockedAudioHandler(audio)
+        case .locked:
+            lockedAudioHandler(audio)
         default:
             return
         }
@@ -137,7 +144,7 @@ public class VHFDSCReceiver {
     
     // *** Unlocked ***
     
-    private func unlockedAudioHandler(audio: [Float]) {
+    private func unlockedAudioHandler(_ audio: [Float]) {
         switch self.state {
         case .unlocked(let dotPatternIndex, let preciseStartFound):
             if(dotPatternIndex == -1) { // Block for where dot pattern isn't yet found. Looks for it, if found, moves to that state & recalls handler. Else, back to waiting.
@@ -162,8 +169,8 @@ public class VHFDSCReceiver {
             return
         }
         debugPrint("Found dot pattern start at sample \(dotPatternIndex).")
-        self.state = .unlocked(dotPatternIndex: dotPatternIndex, preciseStartFound: false)
-        unlockedAudioHandler(audio: audio)
+        self.setState(.unlocked(dotPatternIndex: dotPatternIndex, preciseStartFound: false))
+        unlockedAudioHandler(audio)
     }
     
     /// Looks for a precise start (see PacketSynchronizer). Sets state accordingly if found, recalls unlockedAudioHandler to begin looking for a lock.
@@ -189,31 +196,13 @@ public class VHFDSCReceiver {
         // If we reached here, finding a precise start succeeded, state should be updated accordingly & handler recalled with new audio starting at precise index.
         let newAudio = Array(audioMutableCopy[preciseStartIndex...])
         self.retryCurrentTaskCounter = 0
-        self.state = .unlocked(dotPatternIndex: dotPatternIndex, preciseStartFound: true)
-        unlockedAudioHandler(audio: newAudio)
+        self.setState(.unlocked(dotPatternIndex: dotPatternIndex, preciseStartFound: true))
+        unlockedAudioHandler(newAudio)
     }
     
     /// Checks if lock is achieved (see PacketSynchronizer). Sets state to .locked if found, does *not* recall unlockedAudioHandler.
     private func unlockedAcquireLockHandler(_ audio: [Float]) {
-        var audioMutableCopy = audio
-        var contextBits = BitBuffer()
-        if(retryCurrentTaskCounter > 0) {
-            contextBits = self.claimBitCache()
-            var cache = self.claimAudioCache()
-            cache.append(contentsOf: audio)
-            audioMutableCopy = cache
-        }
-        debugBuffer.append(contentsOf: audioMutableCopy)
-        guard let (symbols, leftoverAudio)  = self.decoder.decodeToSymbols(samples: audioMutableCopy, context: &contextBits) else {
-            abortToWaiting("Failed to demodulate audio to symbols, aborting to waiting.")
-            return
-        }
-        print("leftover: \(leftoverAudio.count)")
-        print("contextBits: \(contextBits)")
-        setCached(bits: contextBits, audio: leftoverAudio)
-        storeSymbols(symbols)
-        printDXSymbols()
-        printRXSymbols()
+        getNextSymbolsFromAudio(audio, useContext: retryCurrentTaskCounter > 0)
         if self.synchronizer.lockIsAcquired(dx: self.dx, rx: self.rx) {
             self.unlockedToLocked()
         }
@@ -227,8 +216,8 @@ public class VHFDSCReceiver {
     
     private func lockedAudioHandler(_ audio: [Float]) {
         getNextSymbolsFromAudio(audio)
-        if(self.synchronizer.reachedEndSequence(dx: self.dx)) {
-            
+        if(self.synchronizer.reachedEndSequence(dx: self.dxConfirmed)) {
+            self.lockedToEnding()
         }
     }
     
@@ -236,6 +225,9 @@ public class VHFDSCReceiver {
     
     private func endingAudioHandler(_ audio: [Float]) {
         getNextSymbolsFromAudio(audio)
+        if let errorCheckSymbol = self.synchronizer.checkIfComplete(dx: self.dx, rx: self.rx) {
+            endOfReceptionHandler(errorCheckSymbol: errorCheckSymbol)
+        }
     }
    
     // #########################
@@ -251,27 +243,54 @@ public class VHFDSCReceiver {
     
     // Unlocked --> Locked
     private func unlockedToLocked() {
-        self.debugPrint("Transitioning from unlocked to locked.")
-        
         // Dropping phasing symbols from storage since they aren't really relevant past this point.
         self.dx = Array(self.dx.dropFirst(6))
         self.rx = Array(self.rx.dropFirst(8))
-        
-        self.state = .locked
+        self.setState(.locked)
     }
     
+    // Locked --> Ending
     private func lockedToEnding() {
-        self.debugPrint("Transitioning from locked to ending.")
-        
+        self.setState(.ending)
+        if let errorCheckSymbol = self.synchronizer.checkIfComplete(dx: self.dx, rx: self.rx) {
+            endOfReceptionHandler(errorCheckSymbol: errorCheckSymbol)
+        }
     }
     
     // --- Helpers ---
+    
+    private func setState(_ newState: DSCReveiverState) {
+        guard newState != self.state else { print("Failed attempt to transition to same state, \(newState)"); return }
+        print("Transitioning from \(self.state) to \(newState)")
+        self.state = newState
+    }
     
     /// Prints only if self.debugPrint is true.
     private func debugPrint(_ str: String) {
         if(true) { // Keep in mind need to add self.debugOutput later
             print(str)
         }
+    }
+    
+    /// Cleanup dx/rx, init DSCSentence from dx, emit DSCSentence, clear state and return
+    private func endOfReceptionHandler(errorCheckSymbol: DSCSymbol) {
+        self.cleanDXAndRX(errorCheckSymbol: errorCheckSymbol)
+        self.printDXSymbols()
+        self.printRXSymbols()
+        self.clearState()
+    }
+    
+    private func cleanDXAndRX(errorCheckSymbol: DSCSymbol) {
+        guard let dxErrorCheckIndex = self.dx.firstIndex(where: {$0 == errorCheckSymbol}) else {
+            print("Could not clean DX/RX -- provided error check symbol is not present in DX")
+            return
+        }
+        guard let rxErrorCheckIndex = self.dx.firstIndex(where: {$0 == errorCheckSymbol}) else {
+            print("Could not clean DX/RX -- provided error check symbol is not present in RX")
+            return
+        }
+        dx.removeSubrange(dxErrorCheckIndex+3..<dx.count) // Error check symbol ("I") is third-to-last in dx,
+        rx.removeSubrange(rxErrorCheckIndex+1..<rx.count) // Error check symbol is the last in RX.
     }
     
     /// Wipes receiver to a clean state, removing stored symbols, bit cache, audio cache.
@@ -304,12 +323,20 @@ public class VHFDSCReceiver {
     }
     
     private func storeSymbols(_ symbols: [DSCSymbol]) {
-        var currIsDX = self.dx.count <= self.rx.count // logic here is that if there are less DX elements, or if they're of the same length, then next char inserted is a DX char
+        var currIsDX = totalSymbolsReceived % 2 == 0
         for i in 0..<symbols.count {
             if(currIsDX) { self.dx.append(symbols[i]) }
             else { self.rx.append(symbols[i]) }
             currIsDX.toggle()
         }
+        if(state == .locked || state == .ending) {
+            guard let confirmed = validator.confirmDX(dx: self.dx, rx: self.rx) else {
+                abortToWaiting("Encountered an unrecoverable error, aborting to waiting.")
+                return;
+            }
+            self.dxConfirmed = confirmed
+        }
+        self.totalSymbolsReceived += symbols.count
     }
     
     private func getNextSymbolsFromAudio(_ audio: [Float], useContext: Bool = true) {

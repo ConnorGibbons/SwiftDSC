@@ -194,7 +194,18 @@ final class SwiftDSCTests: XCTestCase {
         XCTAssert(testReceiver.state == .locked)
         let restOfSamples = Array(samples960k[phasingSequenceEndSample...])
         testReceiver.processSamples(restOfSamples)
+    }
+    
+    func testMMSIFromSymbols() {
+        let symbols: [DSCSymbol] = [DSCSymbol(symbol: 33)!, DSCSymbol(symbol: 85)!, DSCSymbol(symbol: 10)!, DSCSymbol(symbol: 24)!, DSCSymbol(symbol: 10)!] // MMSI: 338510241
+        let testMMSI = MMSI(symbols: symbols)
+        XCTAssert(testMMSI?.value == 338510241)
+        XCTAssert(testMMSI?.description == "338510241")
         
+        let cgSymbols: [DSCSymbol] = [DSCSymbol(symbol: 0)!, DSCSymbol(symbol: 36)!, DSCSymbol(symbol: 69)!, DSCSymbol(symbol: 99)!, DSCSymbol(symbol: 90)!] // MMSI: 003669999 (Coast Guard Test)
+        let cgMMSI = MMSI(symbols: cgSymbols)
+        XCTAssert(cgMMSI?.value == 3669999)
+        XCTAssert(cgMMSI?.description == "003669999")
     }
     
 }

@@ -17,7 +17,7 @@ package class PacketValidator {
             EOS_SYMBOLS.contains($0)
         })
         
-        let count = min(eosPos ?? Int.max, min(dx.count, rx.count)) // Stop at EOS symbol, or, the last symbol whose position exists in both DX & RX.
+        let count = min((eosPos ?? (Int.max - 1)) + 1, min(dx.count, rx.count)) // Stop at EOS symbol, or, the last symbol whose position exists in both DX & RX.
         var confirmedDX = [DSCSymbol].init(repeating: DSCSymbol(code: 0), count: count)
          
         // Pass 1: For any nils in DX, check if a valid entry exists in RX, if so then take that.

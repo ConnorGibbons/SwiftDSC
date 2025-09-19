@@ -4,12 +4,45 @@
 //
 //  Created by Connor Gibbons  on 8/19/25.
 //
+import Foundation
+
+
+
+public struct MMSI {
+    var value: UInt32
+    
+    init?(symbols: [DSCSymbol]) {
+        guard symbols.count == 5 else { return nil }
+        var mmsiValue: UInt32 = 0
+        for (index, symbol) in symbols.enumerated() {
+            guard let symbolValue = symbol.symbol else { return nil }
+            let symbolValAsDouble = Double(symbolValue)
+            let shiftValueExponent = 7.0 - (2.0 * Double(index))
+            let shiftValue = pow(10, shiftValueExponent)
+            mmsiValue += UInt32(shiftValue * symbolValAsDouble)
+        }
+        //mmsiValue = mmsiValue / 10 // Removes trailing 0
+        self.value = mmsiValue
+    }
+    
+    var description: String {
+        var mmsiString = String(self.value)
+        if mmsiString.count < 9 {
+            let paddingCount = 9 - mmsiString.count
+            mmsiString = String(repeating: "0", count: paddingCount) + mmsiString
+        }
+        return mmsiString
+    }
+    
+}
+
+
 
 package enum DSCError: Error {
     case invalidSymbol
 }
 
-package struct DSCSymbol: Equatable{
+public struct DSCSymbol: Equatable {
     var code: UInt16
     var codeBinaryString: String
     var symbol: UInt8?
@@ -29,7 +62,7 @@ package struct DSCSymbol: Equatable{
         self.codeBinaryString = stringifyDSCCode(code)
     }
     
-    package static func == (lhs: DSCSymbol, rhs: DSCSymbol) -> Bool {
+    public static func == (lhs: DSCSymbol, rhs: DSCSymbol) -> Bool {
         return lhs.code == rhs.code
     }
     

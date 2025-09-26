@@ -12,7 +12,10 @@ public struct MMSI {
     var value: UInt32
     
     init?(symbols: [DSCSymbol]) {
-        guard symbols.count == 5 else { return nil }
+        guard symbols.count == 5 else {
+            print("Improper number of symbols provided for MMSI (\(symbols.count), expected 5)")
+            return nil
+        }
         var mmsiValue: UInt32 = 0
         for (index, symbol) in symbols.enumerated() {
             guard let symbolValue = symbol.symbol else { return nil }
@@ -33,10 +36,89 @@ public struct MMSI {
         }
         return mmsiString
     }
+}
+
+public struct DSCTime {
+    let hours: UInt8
+    let minutes: UInt8
+    let digitString: String
+    
+    public init?(symbols: [DSCSymbol]) {
+        guard symbols.count == 2 else {
+            print("Improper number of symbols provided for DSCTime, \(symbols.count), expected 2")
+            return nil
+        }
+        guard let hrs = symbols[0].symbol, let mins = symbols[1].symbol else {
+            print("Nil provided in hours or minutes position for DSCTime.")
+            return nil
+        }
+        self.hours = hrs
+        self.minutes = mins
+        self.digitString = "\(hrs)\(mins)"
+    }
     
 }
 
+// Convenience wrapper struct for coordinates which are provided by some message formats.
+public struct DSCCoordinates {
+    let quadrant: DSCQuadrant
+    let latitudeDegrees: Int
+    let latitudeMinutes: Int
+    let longitudeDegrees: Int
+    let longitudeMinutes: Int
+    let digitString: String
+    
+    public init?(symbols: [DSCSymbol]) {
+        guard symbols.count == 5 else {
+            print("Improper number of symbols provided for DSCCoordinates (\(symbols.count), expected 5")
+            return nil
+        }
+        guard let quadrant = DSCQuadrant(symbol: symbols[0]) else {
+            print("Improper quadrant number (\(String(describing: symbols[0].symbol)) provided, expected 0-3")
+            return nil
+        }
+        self.quadrant = quadrant
+        guard let digits = symbolsToDigitString(symbols) else {
+            print("Unable to convert symbols to 10-digit string for DSCCordinates.")
+            return nil
+        }
+        self.digitString = digits
+        let latitudeStartIndex = digits.index(digits.startIndex, offsetBy: 1)
+        guard let latDegrees = Int(String(digits[latitudeStartIndex..<digits.index(latitudeStartIndex, offsetBy: 2)])), let latMinutes = Int(String(digits[digits.index(latitudeStartIndex, offsetBy: 2)..<digits.index(latitudeStartIndex, offsetBy: 4)])) else {
+            print("Unable to convert latitude digits to Int")
+            return nil
+        }
+        self.latitudeDegrees = latDegrees
+        self.latitudeMinutes = latMinutes
+        
+        let longitudeStartIndex = digits.index(digits.startIndex, offsetBy: 5)
+        guard let longDegrees = Int(String(digits[longitudeStartIndex..<digits.index(longitudeStartIndex, offsetBy: 3)])), let longMinutes = Int(String(digits[digits.index(longitudeStartIndex, offsetBy: 2)..<digits.index(longitudeStartIndex, offsetBy: 4)])) else {
+            print("Unable to convert longitude digits to Int")
+            return nil
+        }
+        self.longitudeDegrees = longDegrees
+        self.longitudeMinutes = longMinutes
+    }
+    
+}
 
+// Converts 5 symbols to a 10-digit number as a string, including leading zeroes.
+// Designed according to table A1-2 from ITU-R M.493-16
+func symbolsToDigitString(_ symbols: [DSCSymbol]) -> String? {
+    var digits: UInt16 = 0
+    for (index, symbol) in symbols.enumerated() {
+        guard let symbolValue = symbol.symbol else { return nil }
+        let symbolValAsDouble: Double = Double(symbolValue)
+        let shiftValueExponent = 8.0 - (2 * Double(index))
+        let shiftValue = pow(10.0, shiftValueExponent)
+        digits += UInt16(shiftValue * symbolValAsDouble)
+    }
+    var digitsString = String(digits)
+    if digitsString.count < 10 {
+        digitsString = String(repeating: "0", count: 10 - digitsString.count) + digitsString
+    }
+    return digitsString
+}
 
 package enum DSCError: Error {
     case invalidSymbol

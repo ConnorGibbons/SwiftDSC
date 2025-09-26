@@ -29,8 +29,13 @@ extension VHFDSCReceiver {
     /// Cleanup dx/rx, init DSCSentence from dx, emit DSCSentence, clear state and return
     func endOfReceptionHandler(errorCheckSymbol: DSCSymbol) {
         self.cleanDXAndRX(errorCheckSymbol: errorCheckSymbol)
-        self.printDXSymbols()
-        self.printRXSymbols()
+        self.printDXConfirmedSymbols()
+        if let sentence = getDSCCall(callSymbols: dxConfirmed) {
+            self.emittedCallHandler(sentence)
+        } else {
+            print("Failed to parse call symbols as DSCSentence.")
+            print("\(dxConfirmed)")
+        }
         self.clearState()
     }
     
@@ -154,6 +159,13 @@ extension VHFDSCReceiver {
     func printDXSymbols() {
         print("*DX*")
         for symbol in dx {
+            print(symbol.symbol ?? "nil")
+        }
+    }
+    
+    func printDXConfirmedSymbols() {
+        print("*DX (Confirmed)*")
+        for symbol in dxConfirmed {
             print(symbol.symbol ?? "nil")
         }
     }

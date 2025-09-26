@@ -49,6 +49,9 @@ public class VHFDSCReceiver {
     // Parameters
     let inputSampleRate: Int
     let internalSampleRate: Int
+    var emittedCallHandler: (DSCCall) -> Void = {
+        print("VHF DSC Call Received: \($0.description)")
+    }
     
     // State
     var state: DSCReveiverState
@@ -138,4 +141,7 @@ public class VHFDSCReceiver {
         }
     }
     
+    public func setCallEmissionHandler(_ handler: @escaping (DSCCall) -> Void) {
+        self.emittedCallHandler = handler
+    }
 }

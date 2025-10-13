@@ -12,7 +12,7 @@ import Network
 import Darwin
 
 // Constants
-let MIN_BUFFER_LEN = 91_000
+let MIN_BUFFER_LEN = 96_000
 let DEFAULT_SAMPLE_RATE = 960_000
 
 class RuntimeState {
@@ -38,7 +38,7 @@ class RuntimeState {
     var shouldExit: Bool = false
 }
 
-struct DebugConfiguration {
+public struct DebugConfiguration {
     let debugOutput: Bool
 }
 
@@ -270,7 +270,7 @@ func main(state: RuntimeState) throws {
     try sdr.setDigitalAGCEnabled(state.useDigitalAGC)
     try sdr.setSampleRate(DEFAULT_SAMPLE_RATE)
     try? sdr.setTunerBandwidth(state.bandwidth) // This won't work on RTLSDR_TCP because it's not implemented yet
-    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_SAMPLE_RATE, internalSampleRate: 12000)
+    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_SAMPLE_RATE, internalSampleRate: 12000, debugConfig: state.debugConfig)
     
     var inputBuffer: [DSPComplex] = []
     

@@ -64,6 +64,7 @@ public class VHFDSCReceiver {
     var retryCurrentTaskCounter: Int = 0
     
     // Debug
+    var debugConfig: DebugConfiguration
     var debugBuffer: [Float] = []
     
     // Components
@@ -74,7 +75,7 @@ public class VHFDSCReceiver {
     package let synchronizer: VHFDSCPacketSynchronizer
     package let validator: PacketValidator
     
-    public init(inputSampleRate: Int, internalSampleRate: Int) throws {
+    public init(inputSampleRate: Int, internalSampleRate: Int, debugConfig: DebugConfiguration) throws {
         guard inputSampleRate >= internalSampleRate else {
             throw DSCErrors.inputSampleRateTooLow
         }
@@ -99,6 +100,9 @@ public class VHFDSCReceiver {
         self.totalSymbolsReceived = 0
         self.bitCache = BitBuffer()
         self.audioCache = []
+        
+        // Debug
+        self.debugConfig = debugConfig
         
         // Components
         self.energyDetector = EnergyDetector(sampleRate: internalSampleRate, bufferDuration: 1, windowSize: 0.025, resistance: 0.5, debugOutput: true)
@@ -132,7 +136,7 @@ public class VHFDSCReceiver {
     private func processAudio(_ audio: [Float]) {
         switch state {
         case .waiting:
-            print("Hit a disallowed case -- processAudio called while state is 'waiting'.")
+            debugPrint("Hit a disallowed case -- processAudio called while state is 'waiting'.")
             return
         case .unlocked:
             unlockedAudioHandler(audio)

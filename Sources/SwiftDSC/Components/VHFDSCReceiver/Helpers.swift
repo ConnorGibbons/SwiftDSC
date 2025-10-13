@@ -21,7 +21,7 @@ extension VHFDSCReceiver {
     
     /// Prints only if self.debugPrint is true.
     func debugPrint(_ str: String) {
-        if(true) { // Keep in mind need to add self.debugOutput later
+        if(self.debugConfig.debugOutput) { // Keep in mind need to add self.debugOutput later
             print(str)
         }
     }
@@ -33,8 +33,8 @@ extension VHFDSCReceiver {
         if let sentence = getDSCCall(callSymbols: dxConfirmed) {
             self.emittedCallHandler(sentence)
         } else {
-            print("Failed to parse call symbols as DSCSentence.")
-            print("\(dxConfirmed)")
+            debugPrint("Failed to parse call symbols as DSCSentence.")
+            debugPrint("\(dxConfirmed)")
         }
         self.abortToWaiting("Full call received, returning to waiting.")
     }
@@ -43,15 +43,19 @@ extension VHFDSCReceiver {
     /// This might not be necessary since any logic after ending reception should use dxConfirmed, which intrinsically will not have the extra symbols.
     func cleanDXAndRX(errorCheckSymbol: DSCSymbol) {
         guard let dxErrorCheckIndex = self.dx.firstIndex(where: {$0 == errorCheckSymbol}) else {
-            print("Could not clean DX/RX -- provided error check symbol is not present in DX")
+            debugPrint("Could not clean DX/RX -- provided error check symbol is not present in DX")
             return
         }
         guard let rxErrorCheckIndex = self.dx.firstIndex(where: {$0 == errorCheckSymbol}) else {
-            print("Could not clean DX/RX -- provided error check symbol is not present in RX")
+            debugPrint("Could not clean DX/RX -- provided error check symbol is not present in RX")
             return
         }
-        dx.removeSubrange(dxErrorCheckIndex+3..<dx.count) // Error check symbol ("I") is third-to-last in dx,
-        rx.removeSubrange(rxErrorCheckIndex+1..<rx.count) // Error check symbol is the last in RX.
+        if(dxErrorCheckIndex+3 <= dx.count) {
+            dx.removeSubrange(dxErrorCheckIndex+3..<dx.count) // Error check symbol ("I") is third-to-last in dx.
+        }
+        if(rxErrorCheckIndex+1 <= rx.count) {
+            rx.removeSubrange(rxErrorCheckIndex+1..<rx.count) // Error check symbol is the last in RX.
+        }
     }
     
     /// Wipes receiver to a clean state, removing stored symbols, bit cache, audio cache.
@@ -138,8 +142,7 @@ extension VHFDSCReceiver {
             currentChunkNum += 1
         }
         guard highEnergyIndices.count > 1 else {
-            // debugPrint("Exited early due to not finding enough high energy indicies")
-            print("Exited early due to not finding enough high energy indicies")
+            debugPrint("Exited early due to not finding enough high energy indicies")
             return []
         }
         

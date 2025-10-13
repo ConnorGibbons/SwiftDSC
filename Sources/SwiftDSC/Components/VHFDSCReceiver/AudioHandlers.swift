@@ -29,13 +29,15 @@ extension VHFDSCReceiver {
     
     /// Looks for dot pattern start. Sets state accordingly if found, recalls unlockedAudioHandler to begin looking for precise start.
     func unlockedDotPatternHandler(_ audio: [Float]) {
-        guard let dotPatternIndex = self.synchronizer.findDotPatternStart(audio: audio) else {
+        var mutableAudio = claimAudioCache(); mutableAudio.append(contentsOf: audio)  // This needs to be here in case the dot pattern was split in half during the input.
+        guard let dotPatternIndex = self.synchronizer.findDotPatternStart(audio: mutableAudio) else {
             self.abortToWaiting("Failed to find dot pattern -- returning to waiting state.")
+            self.audioCache = audio
             return
         }
         debugPrint("Found dot pattern start at sample \(dotPatternIndex).")
         self.setState(.unlocked(dotPatternIndex: dotPatternIndex, preciseStartFound: false))
-        unlockedAudioHandler(audio)
+        unlockedAudioHandler(mutableAudio)
     }
     
     /// Looks for a precise start (see PacketSynchronizer). Sets state accordingly if found, recalls unlockedAudioHandler to begin looking for a lock.

@@ -12,7 +12,7 @@ import Network
 import Darwin
 
 // Constants
-let MIN_BUFFER_LEN = 95_000
+let MIN_BUFFER_LEN = 91_000
 let DEFAULT_SAMPLE_RATE = 960_000
 
 class RuntimeState {

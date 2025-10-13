@@ -36,7 +36,7 @@ extension VHFDSCReceiver {
             print("Failed to parse call symbols as DSCSentence.")
             print("\(dxConfirmed)")
         }
-        self.clearState()
+        self.abortToWaiting("Full call received, returning to waiting.")
     }
     
     /// Removes any extraneous symbols after the ending sequence.

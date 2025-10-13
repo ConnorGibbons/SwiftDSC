@@ -34,6 +34,8 @@ package class EnergyDetector {
         else {
             self.windowSize = Int(Double(sampleRate) * windowSize!)
         }
+        
+        debugPrint("EnergyDetector Window Size: \(self.windowSize); Buffer Len: \(buffer.count) ")
     }
     
     func addSamples(_ samples: [DSPComplex]) -> [Int] {
@@ -42,9 +44,9 @@ package class EnergyDetector {
             return []
         }
         else if samples.isEmpty {
+            debugPrint("EnergyDetector received no samples!")
             return []
         }
-        
         self.buffer.write(samples)
         let threshold = self.processBuffer()
         var highEnergyIndicies: [Int] = []

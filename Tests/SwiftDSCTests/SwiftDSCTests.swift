@@ -91,8 +91,8 @@ final class SwiftDSCTests: XCTestCase {
     func testVHFDSCEnergyDetection() throws {
         guard let samples240k = SwiftDSCTests.testCall240k else { XCTFail("Failed to load test samples (240k)"); return }
         guard let samples960k = SwiftDSCTests.testCall960k else { XCTFail("Failed to load test samples (960k)"); return }
-        let times240k = try getEnergyDetectionTimes(samples: samples240k, sampleRate: 240000, signalFrequencyOffset: 24000)
-        let times960k = try getEnergyDetectionTimes(samples: samples960k, sampleRate: 960000, signalFrequencyOffset: 24000)
+        let times240k = try getEnergyDetectionTimes(samples: samples240k, sampleRate: 240000, signalFrequencyOffset: 23500)
+        let times960k = try getEnergyDetectionTimes(samples: samples960k, sampleRate: 960000, signalFrequencyOffset: 23500)
         
         
         // For first sample ('240k') -- Signal is from 0.71 to 1.08 s

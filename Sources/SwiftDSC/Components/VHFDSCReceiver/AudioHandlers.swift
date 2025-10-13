@@ -72,7 +72,12 @@ extension VHFDSCReceiver {
             self.unlockedToLocked()
         }
         else {
-            guard retryCurrentTaskCounter < self.maxLockingRetries else { abortToWaiting("Failed to find lock after \(self.maxLockingRetries) retries, aborting to waiting."); return }
+            guard retryCurrentTaskCounter < self.maxLockingRetries else {
+                printDXSymbols()
+                printRXSymbols()
+                abortToWaiting("Failed to find lock after \(self.maxLockingRetries) retries, aborting to waiting.")
+                return
+            }
             retryCurrentTaskCounter += 1
         }
     }

@@ -44,7 +44,7 @@ public class VHFDSCReceiver {
     let energyDetectionResistance = 0.5
     let collapseTimesThreshold = 0.075
     let collapseTimesBuffer = 0.0
-    let maxLockingRetries = 1
+    let maxLockingRetries = 2
     
     // Parameters
     let inputSampleRate: Int
@@ -101,7 +101,7 @@ public class VHFDSCReceiver {
         self.audioCache = []
         
         // Components
-        self.energyDetector = EnergyDetector(sampleRate: internalSampleRate, bufferDuration: 1, windowSize: 0.025, resistance: 0.5)
+        self.energyDetector = EnergyDetector(sampleRate: internalSampleRate, bufferDuration: 1, windowSize: 0.025, resistance: 0.5, debugOutput: true)
         self.preprocessor = SignalPreprocessor(inputSampleRate: inputSampleRate, outputSampleRate: internalSampleRate)
         self.processor = try SignalProcessor(sampleRate: internalSampleRate)
         self.decoder = VHFDSCPacketDecoder(sampleRate: internalSampleRate)
@@ -116,8 +116,10 @@ public class VHFDSCReceiver {
         case .waiting:
             guard let (startTime, endTime) = getHighEnergyTimes(preprocessedSamples).first else { return }
             let endSample = min(timeToSampleIndex(endTime, sampleRate: self.internalSampleRate), preprocessedSamples.count - 1) // Preventing out of bounds errors
-            let startSample = max(timeToSampleIndex(startTime, sampleRate: self.internalSampleRate), 0) 
-            let signalSamples = Array(preprocessedSamples[startSample...endSample])
+            let startSample = max(timeToSampleIndex(startTime, sampleRate: self.internalSampleRate), 0)
+//            Adjustment -- if high energy is detected, just use all of the samples. It's better than having some get left out.
+//            let signalSamples = Array(preprocessedSamples[startSample...endSample])
+            let signalSamples = preprocessedSamples
             let audio = self.processor.frequencyOverTime(signalSamples)
             self.state = .unlocked(dotPatternIndex: -1, preciseStartFound: false)
             processAudio(audio)

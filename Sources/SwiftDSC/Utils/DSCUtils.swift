@@ -191,3 +191,5 @@ package let DSC_CODE_TO_SYMBOL: [UInt16: UInt8] = DSC_SYMBOL_TO_CODE.reduce([:],
     newResult[nextPartialResult.value] = nextPartialResult.key
     return newResult
 })
+
+package let VHF_DSC_CENTER_FREQUENCY = 156525000 // VHF Channel 70

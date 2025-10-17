@@ -17,7 +17,7 @@ let DEFAULT_SAMPLE_RATE = 960_000
 
 class RuntimeState {
     // Args
-    var debugConfig: DebugConfiguration = DebugConfiguration(debugOutput: false)
+    var debugConfig: DebugConfiguration = DebugConfiguration(debugOutput: .none)
     var offlineSamples: [DSPComplex]? = nil
     var offlineCenterFrequency: Int? = nil
     var offlineSampleRate: Int? = nil
@@ -39,7 +39,18 @@ class RuntimeState {
 }
 
 public struct DebugConfiguration {
-    let debugOutput: Bool
+    let debugOutput: DebugLevel
+}
+
+public enum DebugLevel: Int, Comparable {
+    case extensive = 0
+    case limited = 1
+    case errorsOnly = 2
+    case none = 3
+    
+    public static func < (lhs: DebugLevel, rhs: DebugLevel) -> Bool {
+        return lhs.rawValue < rhs.rawValue
+    }
 }
 
 enum LaunchArgument: String {
@@ -60,7 +71,7 @@ func showHelp() {
     print("")
     print("Options:")
     print("  -h              Show this help message")
-    print("  -d              Enable debug output")
+    print("  -d <level>      Enable debug output. Options are: 'extensive', 'limited', 'errorsonly' and 'none'. 'none' is the default if -d isn't provided.")
     print("  -ot <file path, center frequency, sample rate> Perform offline decoding test using specified file as input, must be 16-bit WAV where IQ samples are interleaved")
     print("  -n              Print valid DSC calls to console (human readable)")
     print("  -agc            Enable digital AGC")
@@ -93,7 +104,16 @@ func mapCLIArgsToVariables() -> RuntimeState {
         
         switch argument {
         case .debugOutput:
-            runtimeState.debugConfig = DebugConfiguration.init(debugOutput: true)
+            currArgIndex += 1
+            var providedDebugLevel: DebugLevel = .none
+            switch nextArgument?.lowercased() {
+            case "extensive": providedDebugLevel = .extensive
+            case "limited": providedDebugLevel = .limited
+            case "errorsonly": providedDebugLevel = .errorsOnly
+            case "none": providedDebugLevel = .none
+            default: print("Invalid or no debug level provided with -d. Options are: 'extensive', 'limited', 'errorsonly' and 'none'."); exit(64)
+            }
+            runtimeState.debugConfig = DebugConfiguration(debugOutput: providedDebugLevel)
             
         case .offlineDecodingTest:
             currArgIndex += 1
@@ -276,7 +296,7 @@ func main(state: RuntimeState) throws {
     
     sdr.asyncReadSamples(callback: { (inputData) in
         guard inputData.count > 16 else {
-            if(state.debugConfig.debugOutput) {
+            if(state.debugConfig.debugOutput == .extensive) {
                 print("inputData too short, skipping")
             }
             return

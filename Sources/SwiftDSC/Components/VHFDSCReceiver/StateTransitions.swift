@@ -9,7 +9,7 @@ extension VHFDSCReceiver {
     
     // DSCReceiverState --> Waiting
     func abortToWaiting(_ message: String) {
-        self.debugPrint(message)
+        self.debugPrint(message, level: .errorsOnly)
         self.state = .waiting
         self.clearState()
     }

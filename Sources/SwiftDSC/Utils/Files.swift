@@ -80,3 +80,16 @@ public func samplesToCSV(_ samples: [DSPComplex], path: String) {
     }
 }
 
+public func writeAudioToTempFile(_ audio: [Float]) {
+    var path = "/tmp/DSC/\(Date().timeIntervalSince1970).csv"
+    var csvText = "A\n"
+    for sample in audio {
+        csvText.append("\(sample)\n")
+    }
+    do {
+        try csvText.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+    catch {
+        print("Failed to write audio to temp file (\(path))")
+    }
+}

@@ -14,14 +14,14 @@ extension VHFDSCReceiver {
     // Functions for VHFDSCReceiver that exist for convenience / Don't fit neatly into another category.
     
     func setState(_ newState: DSCReveiverState) {
-        guard newState != self.state else { print("Failed attempt to transition to same state, \(newState)"); return }
-        print("Transitioning from \(self.state) to \(newState)")
+        guard newState != self.state else { debugPrint("Failed attempt to transition to same state, \(newState)", level: .errorsOnly); return }
+        debugPrint("Transitioning from \(self.state) to \(newState)", level: .limited)
         self.state = newState
     }
     
     /// Prints only if self.debugPrint is true.
-    func debugPrint(_ str: String) {
-        if(self.debugConfig.debugOutput) { // Keep in mind need to add self.debugOutput later
+    func debugPrint(_ str: String, level: DebugLevel = .extensive) {
+        if(self.debugConfig.debugOutput <= level) {
             print(str)
         }
     }
@@ -33,8 +33,8 @@ extension VHFDSCReceiver {
         if let sentence = getDSCCall(callSymbols: dxConfirmed) {
             self.emittedCallHandler(sentence)
         } else {
-            debugPrint("Failed to parse call symbols as DSCSentence.")
-            debugPrint("\(dxConfirmed)")
+            debugPrint("Failed to parse call symbols as DSCSentence.", level: .errorsOnly)
+            debugPrint("\(dxConfirmed)", level: .extensive)
         }
         self.abortToWaiting("Full call received, returning to waiting.")
     }
@@ -43,11 +43,11 @@ extension VHFDSCReceiver {
     /// This might not be necessary since any logic after ending reception should use dxConfirmed, which intrinsically will not have the extra symbols.
     func cleanDXAndRX(errorCheckSymbol: DSCSymbol) {
         guard let dxErrorCheckIndex = self.dx.firstIndex(where: {$0 == errorCheckSymbol}) else {
-            debugPrint("Could not clean DX/RX -- provided error check symbol is not present in DX")
+            debugPrint("Could not clean DX/RX -- provided error check symbol is not present in DX", level: .errorsOnly)
             return
         }
         guard let rxErrorCheckIndex = self.dx.firstIndex(where: {$0 == errorCheckSymbol}) else {
-            debugPrint("Could not clean DX/RX -- provided error check symbol is not present in RX")
+            debugPrint("Could not clean DX/RX -- provided error check symbol is not present in RX", level: .errorsOnly)
             return
         }
         if(dxErrorCheckIndex+3 <= dx.count) {
@@ -142,7 +142,7 @@ extension VHFDSCReceiver {
             currentChunkNum += 1
         }
         guard highEnergyIndices.count > 1 else {
-            debugPrint("Exited early due to not finding enough high energy indicies")
+            debugPrint("Exited early due to not finding enough high energy indicies", level: .extensive)
             return []
         }
         

@@ -77,7 +77,7 @@ package class SignalProcessor {
     
     private func debugPrint(_ str: String) {
         if(self.debugOutput) {
-            print(str)
+            print("Signal Processor: " + str)
         }
     }
     

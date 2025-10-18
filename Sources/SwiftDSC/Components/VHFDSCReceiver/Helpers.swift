@@ -29,7 +29,7 @@ extension VHFDSCReceiver {
     /// Cleanup dx/rx, init DSCSentence from dx, emit DSCSentence, clear state and return
     func endOfReceptionHandler(errorCheckSymbol: DSCSymbol) {
         self.cleanDXAndRX(errorCheckSymbol: errorCheckSymbol)
-        self.printDXConfirmedSymbols()
+        debugPrint(printSymbols(branch: "dxconfirmed"), level: .limited)
         if let sentence = getDSCCall(callSymbols: dxConfirmed) {
             self.emittedCallHandler(sentence)
         } else {
@@ -159,24 +159,18 @@ extension VHFDSCReceiver {
         }
     }
     
-    func printDXSymbols() {
-        print("*DX*")
-        for symbol in dx {
-            print(symbol.symbol ?? "nil")
+    func printSymbols(branch: String) -> String {
+        var symbolString: String = ""
+        var branchArray: [DSCSymbol]
+        switch branch.lowercased() {
+        case "dx": symbolString = "*DX*"; branchArray = self.dx
+        case "rx": symbolString = "*RX*"; branchArray = self.rx
+        case "dxconfirmed": symbolString = "*DX (Confirmed)*"; branchArray = self.dxConfirmed
+        default: debugPrint("Invalid branch passed to printsymbols (branch: \(branch))", level: .errorsOnly); return ""
         }
-    }
-    
-    func printDXConfirmedSymbols() {
-        print("*DX (Confirmed)*")
-        for symbol in dxConfirmed {
-            print(symbol.symbol ?? "nil")
+        for symbol in branchArray {
+            symbolString += (symbol.symbol?.description ?? "nil")
         }
-    }
-    
-    func printRXSymbols() {
-        print("*RX*")
-        for symbol in rx {
-            print(symbol.symbol ?? "nil")
-        }
+        return symbolString
     }
 }

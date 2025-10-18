@@ -90,7 +90,6 @@ package class VHFDSCPacketSynchronizer {
         let maxSampleShift = Int(Double(self.samplesPerSymbol) * 1.5) // Maxmimum distance from dotPatternIndex to try shifting & redecoding.
         var potentialStarts: [(Int, Float)] = [] // Array of indexes from which starting here results in finding 125. Second element is average decision confidence.
         for shift in stride(from: -maxSampleShift, through: maxSampleShift, by: 1) {
-            print(shift)
             let potentialStartIndex = dotPatternIndex + shift
             guard potentialStartIndex >= 0 else { continue }
             let endSampleIndex = potentialStartIndex + (30 * samplesPerSymbol) // '125' should be in first 30 bits (20 dot pattern + 10 symbol)
@@ -98,14 +97,13 @@ package class VHFDSCPacketSynchronizer {
             let audioFromStart = Array(audio[potentialStartIndex..<endSampleIndex])
             guard let (bitsFromStart, confidences, _) = self.decoder.demodulateToBits(samples: audioFromStart) else { continue }
             let bitstringFromStart = bitsFromStart.getBitstring()
-            print(bitstringFromStart)
+            debugPrint("\(shift): \(bitstringFromStart)")
             guard let indexRangeOfStartSymbol = bitstringFromStart.range(of: "1011111001") else { continue }
             let numberOfSamplesToSkip = bitstringFromStart.distance(from: bitstringFromStart.startIndex, to: indexRangeOfStartSymbol.lowerBound) * samplesPerSymbol
             potentialStarts.append(((dotPatternIndex + shift + numberOfSamplesToSkip), confidences.average()))
         }
         
         potentialStarts.sort { $0.1 > $1.1 } // Sorting by confidence, descending from index 0.
-        print(potentialStarts)
         return potentialStarts.first?.0
     }
     
@@ -142,7 +140,7 @@ package class VHFDSCPacketSynchronizer {
     
     private func debugPrint(_ str: String) {
         if(self.debugOutput) {
-            print(str)
+            print("Synchronizer: " + str)
         }
     }
     

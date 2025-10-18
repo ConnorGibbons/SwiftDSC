@@ -41,7 +41,8 @@ public class VHFDSCReceiver {
     let markFreq: Int = 1300
     let spaceFreq: Int = 2100
     let energyDetectionWindowSize = 0.025
-    let energyDetectionResistance = 0.5
+    let energyDetectionResistance: Float = 0.35
+    let energyDetectionBufferDuration = 1.0
     let collapseTimesThreshold = 0.075
     let collapseTimesBuffer = 0.0
     let maxLockingRetries = 2
@@ -50,7 +51,7 @@ public class VHFDSCReceiver {
     let inputSampleRate: Int
     let internalSampleRate: Int
     var emittedCallHandler: (DSCCall) -> Void = {
-        print("VHF DSC Call Received: \($0.description)")
+        print("VHF DSC Call Received \(NSDate().description): \($0.description)")
     }
     
     // State
@@ -105,7 +106,7 @@ public class VHFDSCReceiver {
         self.debugConfig = debugConfig
         
         // Components
-        self.energyDetector = EnergyDetector(sampleRate: internalSampleRate, bufferDuration: 1, windowSize: 0.025, resistance: 0.5, debugOutput: true)
+        self.energyDetector = EnergyDetector(sampleRate: internalSampleRate, bufferDuration: energyDetectionBufferDuration, windowSize: energyDetectionWindowSize, resistance: energyDetectionResistance, debugOutput: true)
         self.preprocessor = SignalPreprocessor(inputSampleRate: inputSampleRate, outputSampleRate: internalSampleRate)
         self.processor = try SignalProcessor(sampleRate: internalSampleRate)
         self.decoder = VHFDSCPacketDecoder(sampleRate: internalSampleRate)

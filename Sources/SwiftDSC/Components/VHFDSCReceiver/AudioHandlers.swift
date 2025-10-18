@@ -22,7 +22,7 @@ extension VHFDSCReceiver {
                 unlockedAcquireLockHandler(audio)
             }
         default:
-            print("Hit a disallowed case -- unlockedAudioHandler called while state is not 'unlocked'.")
+            debugPrint("Hit a disallowed case -- unlockedAudioHandler called while state is not 'unlocked'.", level: .errorsOnly)
             return
         }
     }
@@ -76,8 +76,8 @@ extension VHFDSCReceiver {
         }
         else {
             guard retryCurrentTaskCounter < self.maxLockingRetries else {
-                printDXSymbols()
-                printRXSymbols()
+                debugPrint(printSymbols(branch: "dx"), level: DebugLevel.limited)
+                debugPrint(printSymbols(branch: "rx"), level: DebugLevel.limited)
                 abortToWaiting("Failed to find lock after \(self.maxLockingRetries) retries, aborting to waiting.")
                 return
             }

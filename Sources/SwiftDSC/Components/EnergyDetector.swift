@@ -73,7 +73,7 @@ package class EnergyDetector {
     
     private func debugPrint(_ str: String) {
         if(self.debugOutput) {
-            print(str)
+            print("Energy Detector: " + str)
         }
     }
     

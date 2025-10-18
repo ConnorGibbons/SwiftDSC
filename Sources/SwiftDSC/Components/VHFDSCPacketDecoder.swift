@@ -69,7 +69,7 @@ package class VHFDSCPacketDecoder {
     /// Prints only if self.debugOutput is true.
     private func debugPrint(_ str: String) {
         if(self.debugOutput) {
-            print(str)
+            print("Packet Decoder: " + str)
         }
     }
     

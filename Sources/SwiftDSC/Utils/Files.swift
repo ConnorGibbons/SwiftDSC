@@ -80,8 +80,8 @@ public func samplesToCSV(_ samples: [DSPComplex], path: String) {
     }
 }
 
-public func writeAudioToTempFile(_ audio: [Float]) {
-    var path = "/tmp/DSC/\(Date().timeIntervalSince1970).csv"
+public func writeAudioToTempFile(_ audio: [Float], prefix: String = "") {
+    let path = "/tmp/DSC/\(prefix)\(Date().timeIntervalSince1970).csv"
     var csvText = "A\n"
     for sample in audio {
         csvText.append("\(sample)\n")

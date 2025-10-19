@@ -8,6 +8,7 @@ import Foundation
 import Accelerate
 import RTLSDRWrapper
 import SignalTools
+import TCPUtils
 import Network
 import Darwin
 
@@ -290,7 +291,10 @@ func main(state: RuntimeState) throws {
     try sdr.setDigitalAGCEnabled(state.useDigitalAGC)
     try sdr.setSampleRate(DEFAULT_SAMPLE_RATE)
     try? sdr.setTunerBandwidth(state.bandwidth) // This won't work on RTLSDR_TCP because it's not implemented yet
-    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_SAMPLE_RATE, internalSampleRate: 12000, debugConfig: state.debugConfig)
+    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_SAMPLE_RATE, internalSampleRate: 48000, debugConfig: state.debugConfig)
+    receiver.setCallEmissionHandler { call in
+        handleCall(call, state: state)
+    }
     
     var inputBuffer: [DSPComplex] = []
     
@@ -301,7 +305,6 @@ func main(state: RuntimeState) throws {
             }
             return
         }
-        var timer = TimeOperation(operationName: "handleInput")
         inputBuffer.append(contentsOf: inputData)
         if(inputBuffer.count >= MIN_BUFFER_LEN) {
             receiver.processSamples(inputBuffer)
@@ -327,7 +330,7 @@ func main(state: RuntimeState) throws {
 func handleCall(_ call: DSCCall, state: RuntimeState) {
     state.validCalls.append(call)
     if(state.outputValidCallsToConsole) {
-        print(call)
+        print("\(NSDate().description) - \(call.description)")
     }
     
     if let server = state.outputServer {

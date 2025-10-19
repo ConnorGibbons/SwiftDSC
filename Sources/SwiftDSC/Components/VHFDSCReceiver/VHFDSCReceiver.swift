@@ -119,9 +119,9 @@ public class VHFDSCReceiver {
         let preprocessedSamples = self.preprocessor.processSignal(&samplesMutableCopy)
         switch state {
         case .waiting:
-            guard let (startTime, endTime) = getHighEnergyTimes(preprocessedSamples).first else { return }
-            let endSample = min(timeToSampleIndex(endTime, sampleRate: self.internalSampleRate), preprocessedSamples.count - 1) // Preventing out of bounds errors
-            let startSample = max(timeToSampleIndex(startTime, sampleRate: self.internalSampleRate), 0)
+            guard let (_, _) = getHighEnergyTimes(preprocessedSamples).first else { return }
+//            let endSample = min(timeToSampleIndex(endTime, sampleRate: self.internalSampleRate), preprocessedSamples.count - 1) // Preventing out of bounds errors
+//            let startSample = max(timeToSampleIndex(startTime, sampleRate: self.internalSampleRate), 0)
 //            Adjustment -- if high energy is detected, just use all of the samples. It's better than having some get left out.
 //            let signalSamples = Array(preprocessedSamples[startSample...endSample])
             let signalSamples = preprocessedSamples

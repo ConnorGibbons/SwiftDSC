@@ -169,7 +169,7 @@ extension VHFDSCReceiver {
         default: debugPrint("Invalid branch passed to printsymbols (branch: \(branch))", level: .errorsOnly); return ""
         }
         for symbol in branchArray {
-            symbolString += (symbol.symbol?.description ?? "nil")
+            symbolString += (symbol.symbol?.description ?? "nil") + " "
         }
         return symbolString
     }

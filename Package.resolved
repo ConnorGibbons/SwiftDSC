@@ -16,6 +16,15 @@
       "state" : {
         "revision" : "70c15c5e659b009fb2c3276e6a72b1e31295ea1e"
       }
+    },
+    {
+      "identity" : "tcputils",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ConnorGibbons/TCPUtils",
+      "state" : {
+        "revision" : "8cd10bee9b0854838f77b353fd715c52d11af65d",
+        "version" : "1.0.2"
+      }
     }
   ],
   "version" : 2

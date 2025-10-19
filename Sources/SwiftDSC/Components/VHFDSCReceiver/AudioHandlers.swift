@@ -49,8 +49,8 @@ extension VHFDSCReceiver {
             audioMutableCopy = cache
         }
         guard let preciseStartIndex = self.synchronizer.getPreciseStartingSample(audio: audioMutableCopy, dotPatternIndex: dotPatternIndex) else { // If precise start failed, abort if at max retries (set to waiting state), otherwise store audio in cache and retain state.
-            // writeAudioToTempFile(audioMutableCopy)
             if retryCurrentTaskCounter >= self.maxLockingRetries {
+                writeAudioToTempFile(audioMutableCopy, prefix: "psh_fail")
                 self.abortToWaiting("Unable to find a precise starting index after \(retryCurrentTaskCounter) retries, returning to waiting.")
                 return
             }
@@ -78,6 +78,7 @@ extension VHFDSCReceiver {
             guard retryCurrentTaskCounter < self.maxLockingRetries else {
                 debugPrint(printSymbols(branch: "dx"), level: DebugLevel.limited)
                 debugPrint(printSymbols(branch: "rx"), level: DebugLevel.limited)
+                writeAudioToTempFile(audio, prefix: "aql_fail")
                 abortToWaiting("Failed to find lock after \(self.maxLockingRetries) retries, aborting to waiting.")
                 return
             }

@@ -108,7 +108,7 @@ final class SwiftDSCTests: XCTestCase {
         // For second sample ('960k') -- Signal is from 2.33 to 3.1 s
         XCTAssertTrue(times960k.count == 1)
         if(times960k.count >= 1) {
-            XCTAssertTrue(times960k[0].0 > 2.27 && times960k[0].0 < 2.33)
+            XCTAssertTrue(times960k[0].0 > 2.26 && times960k[0].0 < 2.33)
             XCTAssertTrue(times960k[0].1 > 3.1 && times960k[0].1 < 3.18)
         }
         else {
@@ -118,7 +118,7 @@ final class SwiftDSCTests: XCTestCase {
     
     func testVHFDSCDemodulation() throws {
         guard var samples960k = SwiftDSCTests.testCall960k else { XCTFail("Failed to load test samples (960k)"); return }
-        let testReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: 48000)
+        let testReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: 48000, debugConfig: DebugConfiguration(debugOutput: .extensive))
         var preprocessed = testReceiver.preprocessor.processSignal(&samples960k)
         testReceiver.processor.filterRawSignal(&preprocessed)
         let signal = Array(testReceiver.processor.frequencyOverTime(preprocessed)[122355..<148800]) // Start hardcoded based on python viz
@@ -133,7 +133,7 @@ final class SwiftDSCTests: XCTestCase {
         guard var samples960k = SwiftDSCTests.testCall960k else { XCTFail("Failed to load test samples (960k)"); return }
         let useSampleRate = 12000
         let samplesPerSymbol = useSampleRate / 1200
-        let testReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: useSampleRate)
+        let testReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: useSampleRate, debugConfig: DebugConfiguration(debugOutput: .extensive))
         var preprocessed = testReceiver.preprocessor.processSignal(&samples960k)
         testReceiver.processor.filterRawSignal(&preprocessed)
         let times = try getEnergyDetectionTimes(samples: samples960k, sampleRate: 960000, signalFrequencyOffset: 0)
@@ -180,7 +180,7 @@ final class SwiftDSCTests: XCTestCase {
         let phasingSequence = Array(samples960k[firstPhasingCharacterEndSample..<phasingSequenceEndSample])
 
         // Trying to input **only** first <30 bits to make sure that state ends up in .unlocked(dotPatternIndex != -1, preciseStartFound: false)
-        let testReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: useSampleRate)
+        let testReceiver = try VHFDSCReceiver(inputSampleRate: 960000, internalSampleRate: useSampleRate, debugConfig: DebugConfiguration(debugOutput: .extensive))
         testReceiver.processSamples(dotPattern)
         XCTAssert(stateIsUnlockedWithDotPatternNoPreciseStart(state: testReceiver.state))
         
@@ -219,7 +219,7 @@ final class SwiftDSCTests: XCTestCase {
 /// Returns an array of start & end time pairs representing times where energy gate was passed.
 private func getEnergyDetectionTimes(samples: [DSPComplex], sampleRate: Int, signalFrequencyOffset: Int) throws -> [(Double, Double)] {
     var signalPrepTimer = TimeOperation(operationName: "Signal preparation")
-    let receiver = try VHFDSCReceiver(inputSampleRate: sampleRate, internalSampleRate: 48000)
+    let receiver = try VHFDSCReceiver(inputSampleRate: sampleRate, internalSampleRate: 48000, debugConfig: DebugConfiguration(debugOutput: .extensive))
     var samplesCopy = samples
     let processedSignal = receiver.preprocessor.processSignal(&samplesCopy)
     print(signalPrepTimer.stop())

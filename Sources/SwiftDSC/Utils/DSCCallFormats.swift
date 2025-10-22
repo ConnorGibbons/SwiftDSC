@@ -4,6 +4,7 @@
 //
 //  Created by Connor Gibbons  on 9/19/25.
 //
+import Foundation
 
 public protocol DSCCall {
     var formatSpecifier: DSCFormatSpecifier { get }
@@ -231,7 +232,7 @@ public struct UrgencyAndSafetyCall: DSCCall {
         let commandTwo = secondTelecommand.description
         let eos = EOS.description
         
-        return "[\(prefix)]: \(selfID) to \(address) - 1st Command: \(commandOne) 2nd Command: \(commandTwo) - \(eos)"
+        return "\(NSDate().description) - [\(prefix)]: \(selfID) to \(address) - 1st Command: \(commandOne) 2nd Command: \(commandTwo) - \(eos)"
     }
 }
 
@@ -312,6 +313,6 @@ public struct RoutineCall: DSCCall {
         let commandTwo = secondTelecommand.description
         let eos = EOS.description
         
-        return "[ROUTINE]: \(selfID) to \(address) - 1st Command: \(commandOne) 2nd Command: \(commandTwo) - \(eos)"
+        return "\(NSDate().description) - [ROUTINE]: \(selfID) to \(address) - 1st Command: \(commandOne) 2nd Command: \(commandTwo) - \(eos)"
     }
 }

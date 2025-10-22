@@ -40,8 +40,8 @@ public class VHFDSCReceiver {
     let baud: Int = 1200
     let markFreq: Int = 1300
     let spaceFreq: Int = 2100
-    let energyDetectionWindowSize = 0.025
-    let energyDetectionResistance: Float = 0.35
+    let energyDetectionWindowSize = 0.01
+    let energyDetectionResistance: Float = 0.65
     let energyDetectionBufferDuration = 1.0
     let collapseTimesThreshold = 0.075
     let collapseTimesBuffer = 0.0

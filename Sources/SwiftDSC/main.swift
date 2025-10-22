@@ -14,7 +14,8 @@ import Darwin
 
 // Constants
 let MIN_BUFFER_LEN = 96_000
-let DEFAULT_SAMPLE_RATE = 960_000
+let DEFAULT_INPUT_SAMPLE_RATE = 288_000
+let DEFAULT_INTERNAL_SAMPLE_RATE = 12000
 
 class RuntimeState {
     // Args
@@ -31,7 +32,9 @@ class RuntimeState {
     var maxBitFlips: Int = 0
     
     // State
-    var outputServer: TCPServer?
+    var outputServer: TCPServer?           // Outputs NMEA to listeners
+    var relayServer: RTLTCPRelayServer?    // Retransmits rtl_tcp stream (read-only) so visualizers can be used.
+    var firstSampleRecieved: Bool = false
     var outputFile: FileHandle?
     var validCalls: [DSCCall] = []
     // var invalidCalls: [DSCCall] = []
@@ -64,6 +67,7 @@ enum LaunchArgument: String {
     case deviceIndex = "-di"
     case saveFile = "-s"
     case help = "-h"
+    case relayServer = "-rs"
 }
 
 func showHelp() {
@@ -80,6 +84,7 @@ func showHelp() {
     print("  -b <bandwidth>  Set tuner bandwidth in Hz (1000-200000)")
     print("  -di <index>     Set SDR device index or host:port for TCP connection -- an rtl_tcp server must be running on the specified host if using TCP.")
     print("  -s <file path>  Save decoded calls to file")
+    print("  -rs <port>      Relays rtl_tcp input to specified port (1-65535). Only use this if using SDR over rtl_tcp.")
     print("")
     print("Examples:")
     print("  SwiftDSC -d -n   Run with debug output and console printing")
@@ -247,7 +252,15 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 print("-s must be accompanied with a file path (e.g. -s path/to/file.txt)")
                 exit(64)
             }
-            
+        
+        case .relayServer:
+            currArgIndex += 1
+            if let port = UInt16(nextArgument ?? "failPlaceholder") { runtimeState.relayServer = RTLTCPRelayServer(port: port) }
+            else {
+                print("Invalid or no port provided to relay server. Allowed values are 1-65535.")
+                exit(64)
+            }
+        
         default:
             print("Unrecognized argument: \(String(describing: argument))")
             exit(64)
@@ -278,9 +291,14 @@ func main(state: RuntimeState) throws {
     
     let sdr: RTLSDR = try {
         if state.sdrHost != nil && state.sdrPort != nil {
-            return try RTLSDR_TCP(host: state.sdrHost!, port: state.sdrPort!)
+            let sdr = try RTLSDR_TCP(host: state.sdrHost!, port: state.sdrPort!)
+            state.relayServer?.associateSDR(sdr: sdr)
+            try state.relayServer?.start()
+            return sdr
         }
-        return try RTLSDR_USB(deviceIndex: state.sdrDeviceIndex)
+        else {
+            return try RTLSDR_USB(deviceIndex: state.sdrDeviceIndex)
+        }
     }()
     
     defer {
@@ -289,9 +307,9 @@ func main(state: RuntimeState) throws {
     
     try sdr.setCenterFrequency(VHF_DSC_CENTER_FREQUENCY)
     try sdr.setDigitalAGCEnabled(state.useDigitalAGC)
-    try sdr.setSampleRate(DEFAULT_SAMPLE_RATE)
+    try sdr.setSampleRate(DEFAULT_INPUT_SAMPLE_RATE)
     try? sdr.setTunerBandwidth(state.bandwidth) // This won't work on RTLSDR_TCP because it's not implemented yet
-    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_SAMPLE_RATE, internalSampleRate: 48000, debugConfig: state.debugConfig)
+    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_INPUT_SAMPLE_RATE, internalSampleRate: 48000, debugConfig: state.debugConfig)
     receiver.setCallEmissionHandler { call in
         handleCall(call, state: state)
     }
@@ -306,6 +324,10 @@ func main(state: RuntimeState) throws {
             return
         }
         inputBuffer.append(contentsOf: inputData)
+        if(state.relayServer != nil) {
+            let transportReadyBytes = inputData.mapForTransportFormat()
+            state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
+        }
         if(inputBuffer.count >= MIN_BUFFER_LEN) {
             receiver.processSamples(inputBuffer)
             inputBuffer = []
@@ -330,7 +352,11 @@ func main(state: RuntimeState) throws {
 func handleCall(_ call: DSCCall, state: RuntimeState) {
     state.validCalls.append(call)
     if(state.outputValidCallsToConsole) {
-        print("\(NSDate().description) - \(call.description)")
+        print(call.description)
+    }
+    
+    if let outputFile = state.outputFile {
+        writeCallToFile(call, file: outputFile)
     }
     
     if let server = state.outputServer {

@@ -56,6 +56,10 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "-rs 8012"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "-d limited"
             isEnabled = "YES">
          </CommandLineArgument>

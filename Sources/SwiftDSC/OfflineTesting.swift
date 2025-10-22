@@ -20,7 +20,7 @@ func offlineTesting(state: RuntimeState) throws {
     shiftFrequencyToBasebandHighPrecision(rawIQ: samples, result: &centeredDataBuffer, frequency: Float(VHF_DSC_CENTER_FREQUENCY - centerFrequency), sampleRate: sampleRate)
     print(timer.stop())
     
-    let receiver = try VHFDSCReceiver(inputSampleRate: sampleRate, internalSampleRate: 12000, debugConfig: state.debugConfig)
+    let receiver = try VHFDSCReceiver(inputSampleRate: sampleRate, internalSampleRate: DEFAULT_INTERNAL_SAMPLE_RATE, debugConfig: state.debugConfig)
     var calls: [DSCCall] = []
     receiver.setCallEmissionHandler{ newCall in
         calls.append(newCall)

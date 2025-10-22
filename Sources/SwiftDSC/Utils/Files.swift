@@ -93,3 +93,12 @@ public func writeAudioToTempFile(_ audio: [Float], prefix: String = "") {
         print("Failed to write audio to temp file (\(path))")
     }
 }
+
+// Note: This assumes that file pointer is already at end of file
+func writeCallToFile(_ call: DSCCall, file: FileHandle) {
+    guard let sentenceAsData = (call.description + "\n").data(using: .utf8) else {
+        print("Failed to encode DSC call to data: \(call.description)")
+        return
+    }
+    file.write(sentenceAsData)
+}

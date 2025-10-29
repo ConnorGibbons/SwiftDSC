@@ -67,6 +67,22 @@ func readIQFromWAV16Bit(filePath: String) throws -> [DSPComplex] {
     return iqOutput
 }
 
+func readAudioFromWAV16Bit(filePath: String) throws -> [Float] {
+    let fileURL = URL(fileURLWithPath: filePath)
+    let data = try Data(contentsOf: fileURL)
+    var audioOutput: [Float] = []
+    data.dropFirst(44).withUnsafeBytes { (audioDataPtr: UnsafeRawBufferPointer) in
+        let int16ArrayBasePointer = audioDataPtr.bindMemory(to: Int16.self)
+        var currOffset: Int = 0
+        while currOffset < int16ArrayBasePointer.count {
+            audioOutput.append(Float(int16ArrayBasePointer[currOffset]) / 32768.0) // Map from Int16 (.wav sample) to Float in range [-1.0, 1.0]
+            currOffset += 1
+        }
+    }
+    print(audioOutput.count)
+    return audioOutput
+}
+
 public func samplesToCSV(_ samples: [DSPComplex], path: String) {
     var csvText = "I,Q\n"
     for sample in samples {
@@ -81,8 +97,20 @@ public func samplesToCSV(_ samples: [DSPComplex], path: String) {
 }
 
 public func writeAudioToTempFile(_ audio: [Float], prefix: String = "") {
+    let dir = "/tmp/DSC"
     let path = "/tmp/DSC/\(prefix)\(Date().timeIntervalSince1970).csv"
-    var csvText = "A\n"
+    var trueObjCBool = ObjCBool(true)
+    
+    if(!FileManager().fileExists(atPath: dir, isDirectory: &trueObjCBool)) {
+        do {
+            try FileManager().createDirectory(atPath: dir, withIntermediateDirectories: false)
+        }
+        catch {
+            print("\(dir) does not exist, and the attempt to create it failed.")
+            return
+        }
+    }
+    var csvText = "Amplitude\n"
     for sample in audio {
         csvText.append("\(sample)\n")
     }

@@ -10,6 +10,7 @@ final class SwiftDSCTests: XCTestCase {
     
     static var testPath960k = Bundle.module.path(forResource: "dsc_test_low_power_960k", ofType: "wav")
     static var testPath240k = Bundle.module.path(forResource: "dsc_test_low_power_240k", ofType: "wav")
+    static var testPathAudio288k = Bundle.module.path(forResource: "dsc_call_audio_mono_288k", ofType: "wav")
     static var testCall960k: [DSPComplex]? = {
         do {
             var timeOpeningFile = TimeOperation(operationName: "Opening dsc_test_low_power_960k.wav")
@@ -35,6 +36,17 @@ final class SwiftDSCTests: XCTestCase {
             shiftFrequencyToBasebandHighPrecision(rawIQ: samples, result: &frequencyCorrected, frequency: 24000, sampleRate: 240000)
             print(timeCorrectingFrequency.stop())
             return frequencyCorrected
+        }
+        catch {
+            return nil
+        }
+    }()
+    static var testCallAudio288k: [Float]? = {
+        do {
+            var timeOpeningFile = TimeOperation(operationName: "Opening dsc_call_audio_288k.wav")
+            let samples = try readAudioFromWAV16Bit(filePath: testPathAudio288k!)
+            print(timeOpeningFile.stop())
+            return samples
         }
         catch {
             return nil
@@ -206,6 +218,18 @@ final class SwiftDSCTests: XCTestCase {
         let cgMMSI = MMSI(symbols: cgSymbols)
         XCTAssert(cgMMSI?.value == 3669999)
         XCTAssert(cgMMSI?.description == "003669999")
+    }
+    
+    func testDirectAudioInput() throws {
+        guard let audio288k = SwiftDSCTests.testCallAudio288k else { XCTFail("Failed to load testCallAudio288k"); return }
+        let receiver = try VHFDSCReceiver(inputSampleRate: 288000, internalSampleRate: 12000, debugConfig: DebugConfiguration(debugOutput: .extensive))
+        var callReceived = false
+        receiver.setCallEmissionHandler { call in
+            callReceived = true
+            print(call.description)
+        }
+        receiver.processAudioInput(audio288k)
+        XCTAssertTrue(callReceived)
     }
     
 }

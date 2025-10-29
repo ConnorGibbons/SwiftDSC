@@ -134,6 +134,14 @@ public class VHFDSCReceiver {
         }
     }
     
+    /// Direct audio input, bypassing any filtering / adjustments VHFDSCReceiver makes to raw IQ.
+    /// Audio is assumed to have sample rate = inputSampleRate.
+    public func processAudioInput(_ audio: [Float]) {
+        if(state == .waiting) { state = .unlocked(dotPatternIndex: -1, preciseStartFound: false) } // Bypassing the energy detector, pretty much
+        let downsampled = self.preprocessor.downsampler.downsampleReal(audio)
+        processAudio(downsampled)
+    }
+    
     private func processAudio(_ audio: [Float]) {
         switch state {
         case .waiting:

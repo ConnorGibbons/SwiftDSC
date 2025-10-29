@@ -38,7 +38,6 @@ class RuntimeState {
     var outputFile: FileHandle?
     var validCalls: [DSCCall] = []
     // var invalidCalls: [DSCCall] = []
-    var bitErrorsCorrected: Int = 0
     var shouldExit: Bool = false
 }
 
@@ -324,12 +323,12 @@ func main(state: RuntimeState) throws {
             return
         }
         inputBuffer.append(contentsOf: inputData)
-        if(state.relayServer != nil) {
-            let transportReadyBytes = inputData.mapForTransportFormat()
-            state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
-        }
         if(inputBuffer.count >= MIN_BUFFER_LEN) {
             receiver.processSamples(inputBuffer)
+            if(state.relayServer != nil) {
+                let transportReadyBytes = inputData.mapForTransportFormat()
+                state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
+            }
             inputBuffer = []
         }
     })

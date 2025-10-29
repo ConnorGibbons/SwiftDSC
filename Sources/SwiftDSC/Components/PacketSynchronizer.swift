@@ -97,7 +97,7 @@ package class VHFDSCPacketSynchronizer {
             let audioFromStart = Array(audio[potentialStartIndex..<endSampleIndex])
             guard let (bitsFromStart, confidences, _) = self.decoder.demodulateToBits(samples: audioFromStart) else { continue }
             let bitstringFromStart = bitsFromStart.getBitstring()
-            debugPrint("\(shift): \(bitstringFromStart)")
+//            debugPrint("\(shift): \(bitstringFromStart)")
             guard let indexRangeOfStartSymbol = bitstringFromStart.range(of: "1011111001") else { continue }
             let numberOfSamplesToSkip = bitstringFromStart.distance(from: bitstringFromStart.startIndex, to: indexRangeOfStartSymbol.lowerBound) * samplesPerSymbol
             potentialStarts.append(((dotPatternIndex + shift + numberOfSamplesToSkip), confidences.average()))
@@ -126,7 +126,9 @@ package class VHFDSCPacketSynchronizer {
         guard let eosSymbolIndex = dx.firstIndex(where: { symbol in EOS_SYMBOLS.contains(symbol)}) else { return nil }
         let eosSymbol = dx[eosSymbolIndex]
         let eosCount = dx.count(where: {$0 == eosSymbol})
-        guard eosCount >= 3 else { return nil }
+        if eosCount < 3 {
+            debugPrint("Warning: there are less than three eos (\(eosSymbol)) symbols in this call. It is either not fully received, or malformed.")
+        }
         let errorCheckSymbol = dx[eosSymbolIndex + 1]
         return errorCheckSymbol
     }

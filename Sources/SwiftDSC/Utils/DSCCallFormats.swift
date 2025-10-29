@@ -266,13 +266,13 @@ public struct RoutineCall: DSCCall {
         }
         self.formatSpecifier = formatSpecifier
         
-        guard let address = MMSI(symbols: Array(callSymbols[2...7])) else {
+        guard let address = MMSI(symbols: Array(callSymbols[2..<7])) else {
             print("Could not parse symbols as MMSI.")
             return nil
         }
         self.address = address
         
-        guard let category = DSCCategory(symbol: callSymbols[8]) else {
+        guard let category = DSCCategory(symbol: callSymbols[7]) else {
             print("Could not parse category symbol.")
             return nil
         }
@@ -281,20 +281,20 @@ public struct RoutineCall: DSCCall {
             return nil
         }
         
-        guard let selfID = MMSI(symbols: Array(callSymbols[9...14])) else {
+        guard let selfID = MMSI(symbols: Array(callSymbols[8..<13])) else {
             print("Could not parse symbols as MMSI (selfID)")
             return nil
         }
         self.selfID = selfID
         
-        guard let firstTelecommand = DSCFirstTelecommand(symbol: callSymbols[15]) else {
-            print("Invalid first telecommand for RoutineCall: \(callSymbols[15])")
+        guard let firstTelecommand = DSCFirstTelecommand(symbol: callSymbols[13]) else {
+            print("Invalid first telecommand for RoutineCall: \(callSymbols[13])")
             return nil
         }
         self.firstTelecommand = firstTelecommand
         
-        guard let secondTelecommand = DSCSecondTelecommand(symbol: callSymbols[16]) else {
-            print("Invalid second telecommand for RoutineCall: \(callSymbols[16])")
+        guard let secondTelecommand = DSCSecondTelecommand(symbol: callSymbols[14]) else {
+            print("Invalid second telecommand for RoutineCall: \(callSymbols[14])")
             return nil
         }
         self.secondTelecommand = secondTelecommand

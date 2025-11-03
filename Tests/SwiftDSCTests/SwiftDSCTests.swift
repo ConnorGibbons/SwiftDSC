@@ -269,7 +269,7 @@ private func splitDXRX(symbols: [DSCSymbol]) -> ([DSCSymbol], [DSCSymbol]) {
     return (dxSymbols, rxSymbols)
 }
 
-private func stateIsUnlockedWithDotPatternNoPreciseStart(state: DSCReveiverState) -> Bool {
+private func stateIsUnlockedWithDotPatternNoPreciseStart(state: DSCReceiverState) -> Bool {
     switch state {
     case .unlocked(let dotPatternIndex, let preciseStartFound):
         return !preciseStartFound && dotPatternIndex >= 0
@@ -278,7 +278,7 @@ private func stateIsUnlockedWithDotPatternNoPreciseStart(state: DSCReveiverState
     }
 }
 
-private func stateIsUnlockedWithPreciseStart(state: DSCReveiverState) -> Bool {
+private func stateIsUnlockedWithPreciseStart(state: DSCReceiverState) -> Bool {
     switch state {
     case .unlocked(dotPatternIndex: _, preciseStartFound: true):
         return true

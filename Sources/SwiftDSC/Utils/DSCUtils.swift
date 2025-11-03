@@ -6,7 +6,188 @@
 //
 import Foundation
 
+enum ModulationType: String {
+    case f1b = "FSK"
+    case j2b = "SSB Modulated AFSK"
+    case j3e = "SSB Voice - Suppressed Carrier"
+    case f3e = "FM Voice"
+}
 
+/// DSC Message 2, in various call formats, is used for transmitting frequencies for subsequent communications.
+/// The spec refers to it as a "frequency message", but it actually can contain two different frequencies within it.
+public struct DSCFrequency {
+    var txFrequency: Int?
+    var rxFrequency: Int?
+    
+    /// For channels, storing two values:
+    /// Element 0: Called station Rx channel number
+    /// Element 1: Called station Tx channel number
+    var vhfChannelNumber: (Int?,Int?)?
+    var mfHfChannelNumber: (Int?,Int?)?
+    
+    init?(symbols: [DSCSymbol]) {
+        guard symbols.count == 6 || symbols.count == 8 else {
+            print("Improper number of symbols provided for DSC frequency (\(symbols.count), expected 6 or 8.)")
+            return nil
+        }
+        let useFourSymbols = symbols.count == 8
+        
+        // Rx Field
+        let rxFreqResult: (Int, Int)? = useFourSymbols ? get4CharFreq(symbols: Array(symbols[0..<4])) : get3CharFreq(symbols: Array(symbols[0..<3]))
+        if let rxFreqResult = rxFreqResult {
+            if(rxFreqResult.1 == -1) {
+                rxFrequency = rxFreqResult.0
+            }
+            else if(rxFreqResult.1 == 0) {
+                vhfChannelNumber = (nil,nil)
+                vhfChannelNumber!.0 = rxFreqResult.0
+            }
+            else if(rxFreqResult.1 == 1) {
+                mfHfChannelNumber = (nil,nil)
+                mfHfChannelNumber!.0 = rxFreqResult.0
+            }
+            else {
+                print("Got an unexpected value in rxFreqResult.1 (\(rxFreqResult.1))")
+                return nil
+            }
+        }
+        
+        // Tx Field
+        let txFreqResult: (Int, Int)? = useFourSymbols ? get4CharFreq(symbols: Array(symbols[3..<7])) : get3CharFreq(symbols: Array(symbols[2..<5]))
+        if let txFreqResult = txFreqResult {
+            if(txFreqResult.1 == -1) {
+                txFrequency = txFreqResult.0
+            }
+            else if(txFreqResult.1 == 0) {
+                if(vhfChannelNumber == nil) {
+                    vhfChannelNumber = (nil,nil)
+                }
+                vhfChannelNumber!.1 = txFreqResult.0
+            }
+            else if(txFreqResult.1 == 1) {
+                if(vhfChannelNumber == nil) {
+                    mfHfChannelNumber = (nil,nil)
+                }
+                mfHfChannelNumber!.1 = txFreqResult.0
+            }
+            else {
+                print("Got an unexpected value in rxFreqResult.1 (\(txFreqResult.1))")
+                return nil
+            }
+        }
+    }
+    
+    /// Gets frequency or channel number from 3 symbols.
+    /// This can be used to describe a VHF channel, or a frequency in 100Hz units.
+    /// Returns a set with two elements:
+    /// Element 0: The frequency in **Hz**, or a channel number as indicated by element 1.
+    /// Element 1: 0 if 0th element of return value is a VHF channel number, 1 if MF/HF channel number, -1 if not a channel number.
+    func get3CharFreq(symbols: [DSCSymbol]) -> (Int, Int)? {
+        guard symbols.count == 3 else {
+            print("Improper number of symbols passed to getFreq (\(symbols.count), expected 3")
+            return nil
+        }
+        guard let char3 = symbols[0].symbol, let char2 = symbols[1].symbol, let char1 = symbols[2].symbol else { return nil }
+        guard char3 != 126 && char2 != 126 && char1 != 126 else { return nil }
+        let HM = Int(char3 / 10)
+        let TM = Int(char3 % 10)
+        let M = Int(char2 / 10)
+        let H = Int(char2 % 10)
+        let T = Int(char1 / 10)
+        let U = Int(char1 % 10)
+        if(HM == 9) {
+            // If HM is 9, it's a VHF channel number.
+            // VHF Channel Num = H T U
+            let channelNum: Int = (H * 100) + (T * 10) + U
+            return (channelNum, 0)
+        }
+        else if(HM == 3) {
+            // If HM is 3, it's an MF/HF channel number.
+            // MF/HF Channel Num = TM M H T U
+            let channelNum: Int = (TM*10000) + (M*1000) + (H*100) + (T*10) + U
+            return (channelNum, 1)
+        }
+        else {
+            let frequency = (HM * 100000) + (TM * 10000) + (M * 1000) + (H * 100) + (T * 10) + U
+            return (frequency, -1)
+        }
+    }
+    
+    /// Gets frequency from 4 symbols.
+    /// Used to describe a 7-digit frequency (ex.
+    /// Returns a set with two elements (nil if unsuccessful or no freq. provided):
+    /// Element 0: Frequency in **Hz**
+    /// Element 1: Unused; just here to keep same type signature as get3CharFreq.
+    func get4CharFreq(symbols: [DSCSymbol]) -> (Int, Int)? {
+        guard let char3 = symbols[0].symbol, let char2 = symbols[1].symbol, let char1 = symbols[2].symbol, let char0 = symbols[3].symbol else { return nil }
+        guard char3 != 126 && char2 != 126 && char1 != 126 && char0 != 126 else { return nil }
+        let _ = Double(char3 / 10) // HM is just a placeholder of '4' in the spec
+        let TM = Double(char3 % 10)
+        let M = Double(char2 / 10)
+        let H = Double(char2 % 10)
+        let T = Double(char1 / 10)
+        let U = Double(char1 % 10)
+        let T1 = Double(char0 / 10)
+        let U1 = Double(char0 % 10)
+        
+        return (Int(((TM * 10000) + (M * 1000) + (H * 100) + (T * 10.0) + U + (0.1 * T1) + (0.01 * U1)) * 1000), -1) // Transmitted OTA as KHz
+    }
+    
+    var description: String {
+        var fullString: String = ""
+        
+        if let vhfChannels = self.vhfChannelNumber {
+            if let vhfRxChannel = vhfChannels.0 {
+                fullString += "RX: VHF Channel \(vhfRxChannel)"
+            } else {
+                fullString += "RX: Channel Unspecified"
+            }
+            
+            fullString += " "
+            
+            if let vhfTxChannel = vhfChannels.1 {
+                fullString += "TX: VHF Channel \(vhfTxChannel)"
+            } else {
+                fullString += "TX: Channel Unspecified"
+            }
+        }
+        
+        else if let mfhfChannels = self.mfHfChannelNumber {
+            if let mfhfRxChannel = mfhfChannels.0 {
+                fullString += "RX: MF/HF Channel \(mfhfRxChannel)"
+            } else {
+                fullString += "RX: Channel Unspecified"
+            }
+            
+            fullString += " "
+            
+            if let mfhfTxChannel = mfhfChannels.1 {
+                fullString += "TX: MF/HF Channel \(mfhfTxChannel)"
+            } else {
+                fullString += "TX: Channel Unspecified"
+            }
+        }
+        
+        else {
+            if let rxFrequency = self.rxFrequency {
+                fullString += "RX: \(rxFrequency / 1000) KHz"
+            } else {
+                fullString += "RX: Frequency Unspecified"
+            }
+            
+            fullString +=  " "
+            
+            if let txFrequency = self.txFrequency {
+                fullString += "TX: \(txFrequency / 1000) KHz"
+            } else {
+                fullString += "TX: Frequency Unspecified"
+            }
+        }
+        
+        return fullString
+    }
+    
+}
 
 public struct MMSI {
     var value: UInt32

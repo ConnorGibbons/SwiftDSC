@@ -12,7 +12,7 @@ public enum DSCFormatSpecifier: UInt8 {
     case distressAlert = 112
     case commonInterestSelective = 114
     case allShips = 116
-    case invididualStationSelective = 120
+    case individualStationSelective = 120
     case nationalNonCallingReserved = 121
     case automaticServiceSelective = 123
     
@@ -31,7 +31,7 @@ public enum DSCFormatSpecifier: UInt8 {
             return "Common interest group call"
         case .allShips:
             return "All ships call"
-        case .invididualStationSelective:
+        case .individualStationSelective:
             return "Individual station call"
         case .nationalNonCallingReserved:
             return "National use (non-calling) / Reserved"

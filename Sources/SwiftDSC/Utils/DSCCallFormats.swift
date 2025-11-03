@@ -252,6 +252,7 @@ public struct RoutineCall: DSCCall {
     public let category: DSCCategory = .routine
     public let firstTelecommand: DSCFirstTelecommand // Message 1 (part 1)
     public let secondTelecommand: DSCSecondTelecommand // Message 1 (part 2)
+    public let frequency: DSCFrequency? // Message 2
     // Message 2 can be either Frequency or Position -- need to make something for this
     
     init?(callSymbols: [DSCSymbol]) {
@@ -299,6 +300,16 @@ public struct RoutineCall: DSCCall {
         }
         self.secondTelecommand = secondTelecommand
         
+        if callSymbols[15].symbol == 4 {
+            guard callSymbols.count > 23 else {
+                print("RoutineCall has 4-symbol frequency specified, but length is too short (\(callSymbols.count).")
+                return nil
+            }
+            self.frequency = DSCFrequency(symbols: Array(callSymbols[15..<23]))
+        } else {
+            self.frequency = DSCFrequency(symbols: Array(callSymbols[15..<21]))
+        }
+        
         guard let eos = DSCEOSSymbol(symbol: callSymbols.last!) else {
             print("Invalid EOS Symbol \(callSymbols.last!)")
             return nil
@@ -312,7 +323,13 @@ public struct RoutineCall: DSCCall {
         let commandOne = firstTelecommand.description
         let commandTwo = secondTelecommand.description
         let eos = EOS.description
-        
-        return "\(NSDate().description) - [ROUTINE]: \(selfID) to \(address) - 1st Command: \(commandOne) 2nd Command: \(commandTwo) - \(eos)"
+        let frequencyString: String = {
+            if let frequency = self.frequency {
+                return frequency.description
+            } else {
+                return ""
+            }
+        }()
+        return "\(NSDate().description) - [ROUTINE]: \(selfID) to \(address) - 1st Command: \(commandOne) 2nd Command: \(commandTwo) - \(frequencyString) - \(eos)"
     }
 }

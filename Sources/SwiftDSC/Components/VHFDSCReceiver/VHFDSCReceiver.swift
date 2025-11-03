@@ -14,7 +14,7 @@ import SignalTools
 /// unlocked: Receiving dot pattern and phasing sequence, acquiring timing.
 /// locked: Dot pattern + phasing complete, timing locked.
 /// ending: Receiving ending sequence.
-package enum DSCReveiverState: Equatable {
+package enum DSCReceiverState: Equatable {
     case waiting
     case unlocked(dotPatternIndex: Int, preciseStartFound: Bool) // Index of dot pattern is stored (-1 if not found), and Bool based on whether precise start was found.
     case locked
@@ -55,7 +55,7 @@ public class VHFDSCReceiver {
     }
     
     // State
-    var state: DSCReveiverState
+    var state: DSCReceiverState
     var dx: [DSCSymbol] = []
     var dxConfirmed: [DSCSymbol] = [] // Storage for dx symbols that have passed errror checking / resolution.
     var rx: [DSCSymbol] = []

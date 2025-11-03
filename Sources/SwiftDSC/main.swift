@@ -209,7 +209,7 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 let port = UInt16(serverPort)
                 do {
                     runtimeState.outputServer = try TCPServer(port: port, actionOnNewConnection: { newConnection in
-                        print("New connection to AIS server: \(newConnection.connectionName)")
+                        print("New connection to DSC server: \(newConnection.connectionName)")
                     })
                 }
                 catch {
@@ -284,7 +284,7 @@ func main(state: RuntimeState) throws {
     }
 
     if(state.outputServer != nil) {
-        print("Starting TCP Server for AIS data...")
+        print("Starting TCP Server for DSC data...")
         state.outputServer?.startServer()
     }
     

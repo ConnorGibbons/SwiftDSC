@@ -13,7 +13,7 @@ extension VHFDSCReceiver {
     // --- Helpers ---
     // Functions for VHFDSCReceiver that exist for convenience / Don't fit neatly into another category.
     
-    func setState(_ newState: DSCReveiverState) {
+    func setState(_ newState: DSCReceiverState) {
         guard newState != self.state else { debugPrint("Failed attempt to transition to same state, \(newState)", level: .errorsOnly); return }
         debugPrint("Transitioning from \(self.state) to \(newState)", level: .limited)
         self.state = newState
@@ -46,7 +46,7 @@ extension VHFDSCReceiver {
             debugPrint("Could not clean DX/RX -- provided error check symbol is not present in DX", level: .errorsOnly)
             return
         }
-        guard let rxErrorCheckIndex = self.dx.firstIndex(where: {$0 == errorCheckSymbol}) else {
+        guard let rxErrorCheckIndex = self.rx.firstIndex(where: {$0 == errorCheckSymbol}) else {
             debugPrint("Could not clean DX/RX -- provided error check symbol is not present in RX", level: .errorsOnly)
             return
         }

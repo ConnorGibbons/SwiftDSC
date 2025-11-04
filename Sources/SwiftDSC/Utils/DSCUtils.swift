@@ -15,6 +15,8 @@ enum ModulationType: String {
 
 /// DSC Message 2, in various call formats, is used for transmitting frequencies for subsequent communications.
 /// The spec refers to it as a "frequency message", but it actually can contain two different frequencies within it.
+/// Including a second frequency or an MF/HF channel number seems to imply the use of duplex radiotelephony -- facilitating calls between ship & shore stations. It appears that as of 2025, this is a thing of the past, and it's likely this feature can't be tested in the real-world.
+/// Certain VHF channels are being renamed with 4-digit names by 2030. It's unclear how this will work via DSC, as it can only transmit VHF frequencies with 3 digits.
 public struct DSCFrequency {
     var txFrequency: Int?
     var rxFrequency: Int?
@@ -53,7 +55,7 @@ public struct DSCFrequency {
         }
         
         // Tx Field
-        let txFreqResult: (Int, Int)? = useFourSymbols ? get4CharFreq(symbols: Array(symbols[3..<7])) : get3CharFreq(symbols: Array(symbols[2..<5]))
+        let txFreqResult: (Int, Int)? = useFourSymbols ? get4CharFreq(symbols: Array(symbols[4..<8])) : get3CharFreq(symbols: Array(symbols[3..<6]))
         if let txFreqResult = txFreqResult {
             if(txFreqResult.1 == -1) {
                 txFrequency = txFreqResult.0
@@ -71,7 +73,7 @@ public struct DSCFrequency {
                 mfHfChannelNumber!.1 = txFreqResult.0
             }
             else {
-                print("Got an unexpected value in rxFreqResult.1 (\(txFreqResult.1))")
+                print("Got an unexpected value in txFreqResult.1 (\(txFreqResult.1))")
                 return nil
             }
         }
@@ -170,7 +172,7 @@ public struct DSCFrequency {
         
         else {
             if let rxFrequency = self.rxFrequency {
-                fullString += "RX: \(rxFrequency / 1000) KHz"
+                fullString += "RX: \(Double(rxFrequency) / 1000) KHz"
             } else {
                 fullString += "RX: Frequency Unspecified"
             }
@@ -178,7 +180,7 @@ public struct DSCFrequency {
             fullString +=  " "
             
             if let txFrequency = self.txFrequency {
-                fullString += "TX: \(txFrequency / 1000) KHz"
+                fullString += "TX: \(Double(txFrequency) / 1000) KHz"
             } else {
                 fullString += "TX: Frequency Unspecified"
             }

@@ -75,7 +75,7 @@ package class VHFDSCPacketSynchronizer {
         for (index, _) in correlationIndicesAndValues {
             if let bitsFromIndex = decoder.demodulateToBits(samples: Array(audio[index..<(index + 20 * samplesPerSymbol)])) {
                 let alternatingRate = alternatingRate(bitsFromIndex.0)
-                if(alternatingRate > 0.85) {
+                if(alternatingRate >= 0.95) {
                     likelyStartsAndConfidences.append((index, bitsFromIndex.1.average()))
                 }
             }

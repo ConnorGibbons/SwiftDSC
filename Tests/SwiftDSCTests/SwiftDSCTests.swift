@@ -232,6 +232,81 @@ final class SwiftDSCTests: XCTestCase {
         XCTAssertTrue(callReceived)
     }
     
+    func testDSCFrequencyStruct() {
+        // 90 0 6 126 126 126
+        // Expected Result:
+        // RX: VHF Channel 6 (HM = 9; H=0; T=0; U=6)
+        // TX: None
+        let freqSymbols0: [DSCSymbol] = [.init(symbol: 90)!,.init(symbol: 0)!,.init(symbol: 6)!,.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 126)!]
+        let frequency0 = DSCFrequency(symbols: freqSymbols0)
+        XCTAssert(frequency0 != nil)
+        XCTAssert(frequency0?.vhfChannelNumber != nil && frequency0?.vhfChannelNumber!.0 == 6 && frequency0?.vhfChannelNumber!.1 == nil)
+        XCTAssert(frequency0?.txFrequency == nil && frequency0?.rxFrequency == nil && frequency0?.mfHfChannelNumber == nil)
+        
+        // 90 0 40 126 126 126
+        // Expected Result:
+        // RX: VHF Channel 40 (HM = 9; H = 0; T = 4; U = 0)
+        // TX: None
+        let freqSymbols1: [DSCSymbol] = [.init(symbol: 90)!,.init(symbol: 0)!,.init(symbol: 40)!,.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 126)!]
+        let frequency1 = DSCFrequency(symbols: freqSymbols1)
+        XCTAssert(frequency1 != nil)
+        XCTAssert(frequency1?.vhfChannelNumber != nil && frequency1?.vhfChannelNumber!.0 == 40 && frequency1?.vhfChannelNumber!.1 == nil)
+        XCTAssert(frequency1?.txFrequency == nil && frequency1?.rxFrequency == nil && frequency1?.mfHfChannelNumber == nil)
+        
+        // 90 2 13 126 126 126
+        // Expected Result:
+        // RX: VHF Channel 213 (HM = 9; H = 2; T = 1; U = 3)
+        // Anything above channel 88 is not a real VHF channel -- I don't know why the spec allows for this, but it is a valid input.
+        // TX: None
+        let freqSymbols2: [DSCSymbol] = [.init(symbol: 90)!,.init(symbol: 2)!,.init(symbol: 13)!,.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 126)!]
+        let frequency2 = DSCFrequency(symbols: freqSymbols2)
+        XCTAssert(frequency2 != nil)
+        XCTAssert(frequency2?.vhfChannelNumber != nil && frequency2?.vhfChannelNumber!.0 == 213 && frequency2?.vhfChannelNumber!.1 == nil)
+        XCTAssert(frequency2?.txFrequency == nil && frequency2?.rxFrequency == nil && frequency2?.mfHfChannelNumber == nil)
+        
+        // 90 0 23 90 0 23
+        // Expected Result:
+        // RX: VHF Channel 23 (HM = 9; H = 0; T = 2; U = 3)
+        // TX: VHF Channel 23 (HM = 9; H = 0; T = 2; U = 3)
+        let freqSymbols3: [DSCSymbol] = [.init(symbol: 90)!,.init(symbol: 0)!,.init(symbol: 23)!,.init(symbol: 90)!,.init(symbol: 0)!,.init(symbol: 23)!]
+        let frequency3 = DSCFrequency(symbols: freqSymbols3)
+        XCTAssert(frequency3 != nil)
+        XCTAssert(frequency3?.vhfChannelNumber != nil && frequency3?.vhfChannelNumber!.0 == 23 && frequency3?.vhfChannelNumber!.1 == 23)
+        XCTAssert(frequency2?.txFrequency == nil && frequency2?.rxFrequency == nil && frequency2?.mfHfChannelNumber == nil)
+        
+        // 41 11 11 11 126 126 126 126
+        // Expected Result:
+        // RX: 11111110 Hz (11,111.11 KHz) (TM = 1; M = 1; H = 1; T = 1; U = 1; T1 = 1; U1 = 1)
+        // (Place value * Unit * Value)
+        // (10000 * 1000 Hz * 1) + (1000 * 1000 Hz * 1) + (100 * 1000 * 1) + (10 * 1000 * 1) + (1 * 1000 * 1) + (10 * 10 * 1) + (1 * 10 * 1)
+        // TX: None
+        let freqSymbols4: [DSCSymbol] = [.init(symbol: 41)!,.init(symbol: 11)!,.init(symbol: 11)!,.init(symbol: 11)!,.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 126)!]
+        let frequency4 = DSCFrequency(symbols: freqSymbols4)
+        XCTAssert(frequency4 != nil)
+        XCTAssert(frequency4?.rxFrequency == 11111110)
+        XCTAssert(frequency4?.mfHfChannelNumber == nil && frequency4?.vhfChannelNumber == nil && frequency4?.txFrequency == nil)
+        
+        // 126 126 126 126 41 11 11 11
+        // Expected Result:
+        // RX: None
+        // TX: 11111110 Hz (11,111.11 KHz) (TM = 1; M = 1; H = 1; T = 1; U = 1; T1 = 1; U1 = 1)
+        let freqSymbols5: [DSCSymbol] = [.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 126)!,.init(symbol: 41)!,.init(symbol: 11)!,.init(symbol: 11)!,.init(symbol: 11)!]
+        let frequency5 = DSCFrequency(symbols: freqSymbols5)
+        XCTAssert(frequency5 != nil)
+        XCTAssert(frequency5?.txFrequency == 11111110)
+        XCTAssert(frequency5?.mfHfChannelNumber == nil && frequency5?.vhfChannelNumber == nil && frequency5?.rxFrequency == nil)
+        
+        // 30 12 1 126 126 126
+        // Expected Result:
+        // RX: MF/HF Channel 1201
+        // TX: None
+        let freqSymbols6: [DSCSymbol] = [.init(symbol: 30)!,.init(symbol: 12)!,.init(symbol: 1)!,.init(symbol:126)!,.init(symbol:126)!,.init(symbol:126)!]
+        let frequency6 = DSCFrequency(symbols: freqSymbols6)
+        XCTAssert(frequency6 != nil)
+        XCTAssert(frequency6?.mfHfChannelNumber != nil && frequency6?.mfHfChannelNumber!.0 == 1201 && frequency6?.mfHfChannelNumber!.1 == nil)
+        XCTAssert(frequency6?.rxFrequency == nil && frequency6?.txFrequency == nil && frequency6?.vhfChannelNumber == nil)
+    }
+    
 }
 
 

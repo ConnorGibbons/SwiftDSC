@@ -127,7 +127,7 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 exit(64)
             }
             do {
-                let samples = try readIQFromWAV16Bit(filePath: nextArgument ?? "failPlaceholder")
+                let samples = try SignalTools.readIQFromWAV16Bit(filePath: nextArgument ?? "failPlaceholder")
                 guard let centerFrequency = Int(args[currArgIndex]) else {
                     print("Center frequency provided for offline test (\(args[currArgIndex])) was not parsable to an integer.")
                     exit(64)

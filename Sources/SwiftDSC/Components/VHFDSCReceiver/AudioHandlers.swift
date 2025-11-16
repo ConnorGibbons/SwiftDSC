@@ -4,6 +4,7 @@
 //
 //  Created by Connor Gibbons  on 9/16/25.
 //
+import SignalTools
 
 extension VHFDSCReceiver {
     

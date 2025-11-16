@@ -191,6 +191,8 @@ public struct DSCFrequency {
     
 }
 
+/// Struct for creating an MMSI (Maritime Mobile Service Identity) from 5 symbols as provided by some DSC call formats.
+/// MMSI should always be 9 digits.
 public struct MMSI {
     var value: UInt32
     
@@ -307,12 +309,16 @@ package enum DSCError: Error {
     case invalidSymbol
 }
 
+/// DSC "Symbols" are the base components of a DSC call.
+/// Depending on what position they are in, they can have various meanings, as prescribed in DSCSymbolEnums.
 public struct DSCSymbol: Equatable {
-    var code: UInt16
+    var code: UInt16 // 10-bit code, first 7 bits are information, containing the value reversed. Last 3 bits are the count of zeroes in the information bits.
     var codeBinaryString: String
     var symbol: UInt8?
     var codeIsValid: Bool { symbol != nil }
     
+    /// Init a DSCSymbol from 10-bit code.
+    /// Note: This will never return nil, but, if **code** is not a valid 10-bit code, then **symbol** will be nil.
     init(code: UInt16) {
         self.code = code
         let symbol = DSC_CODE_TO_SYMBOL[code]

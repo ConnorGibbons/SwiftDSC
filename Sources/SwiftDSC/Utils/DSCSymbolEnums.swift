@@ -274,6 +274,7 @@ public enum DSCQuadrant: UInt8 {
     case NW = 1
     case SE = 2
     case SW = 3
+    case missing = 99
     
     init?(symbol: DSCSymbol) {
         guard let raw = symbol.symbol else { return nil }
@@ -290,6 +291,8 @@ public enum DSCQuadrant: UInt8 {
             return "SE"
         case .SW:
             return "SW"
+        case .missing:
+            return "Missing"
         }
     }
 }

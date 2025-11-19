@@ -244,7 +244,8 @@ public struct DSCTime {
     
 }
 
-// Convenience wrapper struct for coordinates which are provided by some message formats.
+/// Struct for coordinates which are provided by some message formats.
+/// Spec refers to this as Pos1
 public struct DSCCoordinates {
     let quadrant: DSCQuadrant
     let latitudeDegrees: Int
@@ -258,16 +259,27 @@ public struct DSCCoordinates {
             print("Improper number of symbols provided for DSCCoordinates (\(symbols.count), expected 5")
             return nil
         }
+        
         guard let quadrant = DSCQuadrant(symbol: symbols[0]) else {
             print("Improper quadrant number (\(String(describing: symbols[0].symbol)) provided, expected 0-3")
             return nil
         }
         self.quadrant = quadrant
+        if(quadrant == .missing) {
+            self.latitudeDegrees = 0
+            self.latitudeMinutes = 0
+            self.longitudeDegrees = 0
+            self.longitudeMinutes = 0
+            digitString = ""
+            return
+        }
+        
         guard let digits = symbolsToDigitString(symbols) else {
             print("Unable to convert symbols to 10-digit string for DSCCordinates.")
             return nil
         }
         self.digitString = digits
+        
         let latitudeStartIndex = digits.index(digits.startIndex, offsetBy: 1)
         guard let latDegrees = Int(String(digits[latitudeStartIndex..<digits.index(latitudeStartIndex, offsetBy: 2)])), let latMinutes = Int(String(digits[digits.index(latitudeStartIndex, offsetBy: 2)..<digits.index(latitudeStartIndex, offsetBy: 4)])) else {
             print("Unable to convert latitude digits to Int")
@@ -283,6 +295,41 @@ public struct DSCCoordinates {
         }
         self.longitudeDegrees = longDegrees
         self.longitudeMinutes = longMinutes
+    }
+    
+    var description: String {
+        if(quadrant == .missing) { return "Missing Coordinates" }
+        
+        let latDirection: String
+        let longDirection: String
+        
+        switch quadrant {
+        case .NE:
+            latDirection = "N"
+            longDirection = "E"
+        case .NW:
+            latDirection = "N"
+            longDirection = "W"
+        case .SE:
+            latDirection = "S"
+            longDirection = "E"
+        case .SW:
+            latDirection = "S"
+            longDirection = "W"
+        default:
+            return "Missing Coordinates"
+        }
+        
+        let latDegStr = String(format: "%02d", latitudeDegrees)
+        let latMinStr = String(format: "%02d", latitudeMinutes)
+        
+        // Longitude degrees can be up to 3 digits (000 to 180)
+        let longDegStr = String(format: "%03d", longitudeDegrees)
+        // Longitude minutes should be 2 digits
+        let longMinStr = String(format: "%02d", longitudeMinutes)
+        
+        // Example format: 45° 30' N, 120° 15' W
+        return "\(latDegStr)° \(latMinStr)' \(latDirection), \(longDegStr)° \(longMinStr)' \(longDirection)"
     }
     
 }

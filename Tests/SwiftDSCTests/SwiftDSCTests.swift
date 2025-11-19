@@ -307,6 +307,65 @@ final class SwiftDSCTests: XCTestCase {
         XCTAssert(frequency6?.rxFrequency == nil && frequency6?.txFrequency == nil && frequency6?.vhfChannelNumber == nil)
     }
     
+    /// Tests whether the "getDSCCall" function successfully returns the correct call type for various inputs.
+    func testDSCCallDispatch() {
+        // Some IDs to use: 0,36,69,99,90 (003669999) -- 33,85,10,24,10 (338510241) -- 0,36,69,92,80 (003669928)
+        // Pos1: 99,99,99,99,99 --> Signifies a missing position
+        // UTC: 23,0 (23:00)
+        
+        let distressAlertSymbols = [112,112,0,36,69,99,90,110,99,99,99,99,99,23,0,100,127].map { DSCSymbol(symbol: $0)! }
+        let distressCall = getDSCCall(callSymbols: distressAlertSymbols)
+        XCTAssert(distressCall as? DistressAlert != nil)
+    
+        let distressAckSymbols = [116,116,112,0,36,69,99,90,110,33,85,10,24,10,110,99,99,99,99,99,23,0,100,127].map { DSCSymbol(symbol: $0)! }
+        let distressAck = getDSCCall(callSymbols: distressAckSymbols)
+        XCTAssert(distressAck as? DistressAcknowledgement != nil)
+        
+        let distressAlertRelaySymbols = [120,120,0,36,69,99,90,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,117].map { DSCSymbol(symbol: $0)! }
+        let distressAlertRelay = getDSCCall(callSymbols: distressAlertRelaySymbols)
+        XCTAssert(distressAlertRelay as? DistressAlertRelay != nil)
+        
+        // 'group' call -- format '114', EOS '127', nature of distress fixed '110'
+        let distressAlertRelayGroupSymbols = [114,114,0,36,69,99,90,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,126,127].map { DSCSymbol(symbol: $0)! }
+        let distressAlertRelayGroup = getDSCCall(callSymbols: distressAlertRelayGroupSymbols)
+        XCTAssert(distressAlertRelayGroup as? DistressAlertRelay != nil)
+        
+        // 'All ships' call -- format '116', subsequent communications '100', EOS '127'.
+        let distressAlertRelayAllShipsSymbols = [116,116,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,127].map { DSCSymbol(symbol: $0)! }
+        let distressAlertRelayAllShips = getDSCCall(callSymbols: distressAlertRelayAllShipsSymbols)
+        XCTAssert(distressAlertRelayAllShips as? DistressAlertRelay != nil)
+        
+        let distressAlertRelayAcknowledgementSymbols = [120,120,0,36,69,99,90,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,122].map { DSCSymbol(symbol: $0)! }
+        let distressAlertRelayAcknowledgement = getDSCCall(callSymbols: distressAlertRelayAcknowledgementSymbols)
+        XCTAssert(distressAlertRelayAcknowledgement as? DistressAlertRelayAcknowledgement != nil)
+        
+        let distressAlertRelayGroupAcknowledgementSymbols = [114,114,0,36,69,99,90,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,126,122].map { DSCSymbol(symbol: $0)! }
+        let distressAlertRelayGroupAcknowledgement = getDSCCall(callSymbols: distressAlertRelayGroupAcknowledgementSymbols)
+        XCTAssert(distressAlertRelayGroupAcknowledgement as? DistressAlertRelayAcknowledgement != nil)
+        
+        let distressAlertRelayAllShipsAcknowledgementSymbols = [116,116,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,122].map { DSCSymbol(symbol: $0)! }
+        let distressAlertRelayAllShipsAcknowledgement = getDSCCall(callSymbols: distressAlertRelayAllShipsAcknowledgementSymbols)
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement as? DistressAlertRelayAcknowledgement != nil)
+        
+        // 'indvidual select' call
+        let urgencyAndSafetyIndividualCallSymbols = [120,120,0,36,69,99,90,108,33,85,10,24,10,118,126,126,126,126,126,126,126,117].map { DSCSymbol(symbol: $0)! }
+        let urgencyAndSafetyIndividualCall = getDSCCall(callSymbols: urgencyAndSafetyIndividualCallSymbols)
+        XCTAssert(urgencyAndSafetyIndividualCall as? UrgencyAndSafetyCall != nil)
+        
+        // 'All ships' call, and swapped '108' (safety) to '110' (urgency)
+        let urgencyAndSafetyAllShipsCallSymbols = [116,116,110,33,85,10,24,10,118,126,126,126,126,126,126,126,117].map { DSCSymbol(symbol: $0)! }
+        let urgencyAndSafetyAllShipsCall = getDSCCall(callSymbols: urgencyAndSafetyAllShipsCallSymbols)
+        XCTAssert(urgencyAndSafetyAllShipsCall as? UrgencyAndSafetyCall != nil)
+        
+        let routineIndividualCallSymbols = [120,120,24,73,65,0,0,100,24,73,65,0,0,100,126,90,0,6,126,126,126,117].map { DSCSymbol(symbol: $0)! }
+        let routineIndividualCall = getDSCCall(callSymbols: routineIndividualCallSymbols)
+        XCTAssert(routineIndividualCall as? RoutineCall != nil)
+        
+        let routineGroupCallSymbols = [114,114,24,73,65,0,0,100,24,73,65,0,0,100,126,90,0,6,126,126,126,117].map { DSCSymbol(symbol: $0)! }
+        let routineGroupCall = getDSCCall(callSymbols: routineGroupCallSymbols)
+        XCTAssert(routineGroupCall as? RoutineCall != nil)
+    }
+    
 }
 
 

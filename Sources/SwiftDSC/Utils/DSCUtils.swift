@@ -226,7 +226,6 @@ public struct MMSI {
 public struct DSCTime {
     let hours: UInt8
     let minutes: UInt8
-    let digitString: String
     
     public init?(symbols: [DSCSymbol]) {
         guard symbols.count == 2 else {
@@ -239,9 +238,11 @@ public struct DSCTime {
         }
         self.hours = hrs
         self.minutes = mins
-        self.digitString = "\(hrs)\(mins)"
     }
     
+    var description: String {
+        return String(format: "%02d:%02d", hours, minutes)
+    }
 }
 
 /// Struct for coordinates which are provided by some message formats.

@@ -366,6 +366,170 @@ final class SwiftDSCTests: XCTestCase {
         XCTAssert(routineGroupCall as? RoutineCall != nil)
     }
     
+    func testDSCDistressAlert() {
+        // Self ID: 003669999; Coordinates: Missing; Time: 23:00; Ack: Required
+        let distressAlertSymbols = [112,112,0,36,69,99,90,110,99,99,99,99,99,23,0,100,127].map { DSCSymbol(symbol: $0)! }
+        guard let distressCall = getDSCCall(callSymbols: distressAlertSymbols) as? DistressAlert else {
+            XCTFail("distressCall did not get parsed to a DistressAlert type.")
+            return
+        }
+        XCTAssert(distressCall.selfID.description == "003669999")
+        XCTAssert(distressCall.distressCoordinates.quadrant == .missing)
+        XCTAssert(distressCall.timeUTC.description == "23:00")
+        XCTAssert(distressCall.natureOfDistress == .manOverboard)
+        XCTAssert(distressCall.EOS == .other)
+    }
+    
+    func testDSCDistressAlertAcknowledgement() {
+        let distressAlertAcknowledgementSymbols = [116,116,112,0,36,69,99,90,110,33,85,10,24,10,110,99,99,99,99,99,23,0,100,127].map { DSCSymbol(symbol: $0)! }
+        guard let distressAcknowledgement = getDSCCall(callSymbols: distressAlertAcknowledgementSymbols) as? DistressAcknowledgement else {
+            XCTFail("distressAcknowledgement did not get parsed to a DistressAcknowledgemnet type.")
+            return
+        }
+        XCTAssert(distressAcknowledgement.selfID.description == "003669999")
+        XCTAssert(distressAcknowledgement.distressID.description == "338510241")
+        XCTAssert(distressAcknowledgement.natureOfDistress == .manOverboard)
+        XCTAssert(distressAcknowledgement.distressCoordinates.quadrant == .missing)
+        XCTAssert(distressAcknowledgement.subsequentCommunications == DSCSymbol(symbol: 100)!)
+    }
+    
+    func testDSCDistressAlertRelay() {
+        let distressAlertRelaySymbols = [120,120,0,36,69,99,90,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,117].map { DSCSymbol(symbol: $0)! }
+        guard let distressAlertRelay = getDSCCall(callSymbols: distressAlertRelaySymbols) as? DistressAlertRelay else {
+            XCTFail("distressAlertRelay did not get parsed to a DistressAlertRelay type.")
+            return
+        }
+        XCTAssert(distressAlertRelay.category == .distress)
+        XCTAssert(distressAlertRelay.formatSpecifier == .individualStationSelective)
+        XCTAssert(distressAlertRelay.address?.description == "003669999")
+        XCTAssert(distressAlertRelay.selfID.description == "003669928")
+        XCTAssert(distressAlertRelay.distressID.description == "338510241")
+        XCTAssert(distressAlertRelay.natureOfDistress == .manOverboard)
+        XCTAssert(distressAlertRelay.distressCoordinates.quadrant == .missing)
+        XCTAssert(distressAlertRelay.subsequentCommunications == DSCSymbol(symbol: 100)!)
+        XCTAssert(distressAlertRelay.EOS == .acknowledgementRequired)
+        
+        let distressAlertRelayGroupSymbols = [114,114,0,36,69,99,90,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,126,127].map { DSCSymbol(symbol: $0)! }
+        guard let distressAlertRelayGroup = getDSCCall(callSymbols: distressAlertRelayGroupSymbols) as? DistressAlertRelay else {
+            XCTFail("distressAlertRelayGroup did not get pased to a DistressAlertRelay type.")
+            return
+        }
+        XCTAssert(distressAlertRelayGroup.category == .distress)
+        XCTAssert(distressAlertRelayGroup.formatSpecifier == .commonInterestSelective)
+        XCTAssert(distressAlertRelayGroup.address?.description == "003669999")
+        XCTAssert(distressAlertRelayGroup.selfID.description == "003669928")
+        XCTAssert(distressAlertRelayGroup.distressID.description == "338510241")
+        XCTAssert(distressAlertRelayGroup.natureOfDistress == .manOverboard)
+        XCTAssert(distressAlertRelayGroup.distressCoordinates.quadrant == .missing)
+        XCTAssert(distressAlertRelayGroup.subsequentCommunications == DSCSymbol(symbol: 126)!)
+        XCTAssert(distressAlertRelayGroup.EOS == .other)
+        
+        let distressAlertRelayAllShipsSymbols = [116,116,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,127].map { DSCSymbol(symbol: $0)! }
+        guard let distressAlertRelayAllShips = getDSCCall(callSymbols: distressAlertRelayAllShipsSymbols) as? DistressAlertRelay else {
+            XCTFail("distressAlertRelayAllShips did not get parsed to a DistressAlertRelay type.")
+            return
+        }
+        XCTAssert(distressAlertRelayAllShips.category == .distress)
+        XCTAssert(distressAlertRelayAllShips.formatSpecifier == .allShips)
+        XCTAssert(distressAlertRelayAllShips.address == nil)
+        XCTAssert(distressAlertRelayAllShips.selfID.description == "003669928")
+        XCTAssert(distressAlertRelayAllShips.distressID.description == "338510241")
+        XCTAssert(distressAlertRelayAllShips.natureOfDistress == .manOverboard)
+        XCTAssert(distressAlertRelayAllShips.distressCoordinates.quadrant == .missing)
+        XCTAssert(distressAlertRelayAllShips.subsequentCommunications == DSCSymbol(symbol: 100)!)
+        XCTAssert(distressAlertRelayAllShips.EOS == .other)
+    }
+    
+    func testDSCDistressAlertRelayAcnkowledgement() {
+        let distressAlertRelayAcknowledgementSymbols = [120,120,0,36,69,99,90,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,122].map { DSCSymbol(symbol: $0)! }
+        guard let distressAlertRelayAcknowledgement = getDSCCall(callSymbols: distressAlertRelayAcknowledgementSymbols) as? DistressAlertRelayAcknowledgement else {
+            XCTFail("distresAlertRelayAcknowledgement did not get parsed to a DistressAlertRelayAcknowledgement type.")
+            return
+        }
+        XCTAssert(distressAlertRelayAcknowledgement.address?.description == "003669999")
+        XCTAssert(distressAlertRelayAcknowledgement.selfID.description == "003669928")
+        XCTAssert(distressAlertRelayAcknowledgement.distressID.description == "338510241")
+        XCTAssert(distressAlertRelayAcknowledgement.natureOfDistress == .manOverboard)
+        XCTAssert(distressAlertRelayAcknowledgement.distressCoordinates.quadrant == .missing)
+        XCTAssert(distressAlertRelayAcknowledgement.time.description == "23:00")
+        XCTAssert(distressAlertRelayAcknowledgement.subsequentCommunications == DSCSymbol(symbol: 100)!)
+        XCTAssert(distressAlertRelayAcknowledgement.EOS == .providingAcknowledgement)
+        
+        let distressAlertRelayAllShipsAcknowledgementSymbols = [116,116,112,0,36,69,92,80,112,33,85,10,24,10,110,99,99,99,99,99,23,0,100,122].map { DSCSymbol(symbol: $0)! }
+        guard let distressAlertRelayAllShipsAcknowledgement = getDSCCall(callSymbols: distressAlertRelayAllShipsAcknowledgementSymbols) as? DistressAlertRelayAcknowledgement else {
+            print("distressAlertRelayAllShipsAcknowledgement did not get parsed to a DistressAlertRelayAcknowledgement type.")
+            return
+        }
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.address == nil)
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.selfID.description == "003669928")
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.distressID.description == "338510241")
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.natureOfDistress == .manOverboard)
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.distressCoordinates.quadrant == .missing)
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.time.description == "23:00")
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.subsequentCommunications == DSCSymbol(symbol: 100)!)
+        XCTAssert(distressAlertRelayAllShipsAcknowledgement.EOS == .providingAcknowledgement)
+    }
+    
+    func testDSCUrgencyAndSafetyCalls() {
+        let urgencyAndSafetyIndividualCallSymbols = [120,120,0,36,69,99,90,108,33,85,10,24,10,118,126,126,126,126,126,126,126,117].map { DSCSymbol(symbol: $0)! }
+        guard let urgencyAndSafetyIndividualCall = getDSCCall(callSymbols: urgencyAndSafetyIndividualCallSymbols) as? UrgencyAndSafetyCall else {
+            print("urgencyAndSafetyIndividualCall did not get parsed to an UrgencyAndSafetyCall type.")
+            return
+        }
+        XCTAssert(urgencyAndSafetyIndividualCall.formatSpecifier == .individualStationSelective)
+        XCTAssert(urgencyAndSafetyIndividualCall.address?.description == "003669999")
+        XCTAssert(urgencyAndSafetyIndividualCall.category == .safety)
+        XCTAssert(urgencyAndSafetyIndividualCall.selfID.description == "338510241")
+        XCTAssert(urgencyAndSafetyIndividualCall.firstTelecommand == .test)
+        XCTAssert(urgencyAndSafetyIndividualCall.secondTelecommand == .noInformation)
+        XCTAssert(urgencyAndSafetyIndividualCall.EOS == .acknowledgementRequired)
+        
+        let urgencyAndSafetyAllShipsCallSymbols = [116,116,110,33,85,10,24,10,118,126,126,126,126,126,126,126,127].map { DSCSymbol(symbol: $0)! }
+        guard let urgencyAndSafetyAllShipsCall = getDSCCall(callSymbols: urgencyAndSafetyAllShipsCallSymbols) as? UrgencyAndSafetyCall else {
+            print("urgencyAndSafetyAllShipsCall did not get parsed to an UrgencyAndSafetyCall type.")
+            return
+        }
+        XCTAssert(urgencyAndSafetyAllShipsCall.formatSpecifier == .allShips)
+        XCTAssert(urgencyAndSafetyAllShipsCall.address == nil)
+        XCTAssert(urgencyAndSafetyAllShipsCall.category == .urgency)
+        XCTAssert(urgencyAndSafetyAllShipsCall.selfID.description == "338510241")
+        XCTAssert(urgencyAndSafetyAllShipsCall.firstTelecommand == .test)
+        XCTAssert(urgencyAndSafetyAllShipsCall.secondTelecommand == .noInformation)
+        XCTAssert(urgencyAndSafetyAllShipsCall.EOS == .other)
+    }
+    
+    func testDSCRoutineCalls() {
+        let routineIndividualCallSymbols = [120,120,24,73,65,0,0,100,24,73,65,0,0,100,126,90,0,6,126,126,126,117].map { DSCSymbol(symbol: $0)! }
+        guard let routineIndividualCall = getDSCCall(callSymbols: routineIndividualCallSymbols) as? RoutineCall else {
+            print("routineIndividualCall did not get parsed to a RoutineCall type.")
+            return
+        }
+        XCTAssert(routineIndividualCall.formatSpecifier == .individualStationSelective)
+        XCTAssert(routineIndividualCall.address.description == "247365000")
+        XCTAssert(routineIndividualCall.category == .routine)
+        XCTAssert(routineIndividualCall.selfID.description == "247365000")
+        XCTAssert(routineIndividualCall.firstTelecommand == .fmTelephony)
+        XCTAssert(routineIndividualCall.secondTelecommand == .noInformation)
+        XCTAssert(routineIndividualCall.frequency?.vhfChannelNumber?.0 == 6)
+        XCTAssert(routineIndividualCall.EOS == .acknowledgementRequired)
+        
+        let routineGroupCallSymbols = [114,114,24,73,65,0,0,100,24,73,65,0,0,100,126,90,0,6,126,126,126,117].map { DSCSymbol(symbol: $0)! }
+        guard let routineGroupCall = getDSCCall(callSymbols: routineGroupCallSymbols) as? RoutineCall else {
+            print("routineGroupCall did not get parsed to a RoutineCall type.")
+            return
+        }
+        XCTAssert(routineGroupCall.formatSpecifier == .commonInterestSelective)
+        XCTAssert(routineGroupCall.address.description == "247365000")
+        XCTAssert(routineGroupCall.category == .routine)
+        XCTAssert(routineGroupCall.selfID.description == "247365000")
+        XCTAssert(routineGroupCall.firstTelecommand == .fmTelephony)
+        XCTAssert(routineGroupCall.secondTelecommand == .noInformation)
+        XCTAssert(routineGroupCall.frequency?.vhfChannelNumber?.0 == 6)
+        XCTAssert(routineGroupCall.EOS == .acknowledgementRequired)
+    }
+    
+    
+    
 }
 
 

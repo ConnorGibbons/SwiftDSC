@@ -16,6 +16,7 @@ import Darwin
 let MIN_BUFFER_LEN = 96_000
 let DEFAULT_INPUT_SAMPLE_RATE = 288_000
 let DEFAULT_INTERNAL_SAMPLE_RATE = 12000
+let readQueue = DispatchQueue.init(label: "SwiftDSC.readQueue")
 
 class RuntimeState {
     // Args
@@ -315,23 +316,25 @@ func main(state: RuntimeState) throws {
     
     var inputBuffer: [DSPComplex] = []
     
-    sdr.asyncReadSamples(callback: { (inputData) in
-        guard inputData.count > 16 else {
-            if(state.debugConfig.debugOutput == .extensive) {
-                print("inputData too short, skipping")
+    readQueue.async {
+        sdr.asyncReadSamples(callback: { (inputData) in
+            guard inputData.count > 16 else {
+                if(state.debugConfig.debugOutput == .extensive) {
+                    print("inputData too short, skipping")
+                }
+                return
             }
-            return
-        }
-        inputBuffer.append(contentsOf: inputData)
-        if(inputBuffer.count >= MIN_BUFFER_LEN) {
-            receiver.processSamples(inputBuffer)
-            if(state.relayServer != nil) {
-                let transportReadyBytes = inputData.mapForTransportFormat()
-                state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
+            inputBuffer.append(contentsOf: inputData)
+            if(inputBuffer.count >= MIN_BUFFER_LEN) {
+                receiver.processSamples(inputBuffer)
+                if(state.relayServer != nil) {
+                    let transportReadyBytes = inputData.mapForTransportFormat()
+                    state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
+                }
+                inputBuffer = []
             }
-            inputBuffer = []
-        }
-    })
+        })
+    }
     
     registerSignalHandler()
     atexit_b { // Like 'atexit' but allows for capturing context. who knew?

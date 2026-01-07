@@ -19,6 +19,14 @@
       }
     },
     {
+      "identity" : "soapysdrwrapper",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ConnorGibbons/SoapySDRWrapper",
+      "state" : {
+        "revision" : "6a02bf5fa0dbaf9eb533525f5338167e9b9da20f"
+      }
+    },
+    {
       "identity" : "tcputils",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ConnorGibbons/TCPUtils",

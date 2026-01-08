@@ -6,7 +6,7 @@
 //
 import Foundation
 import Accelerate
-import RTLSDRWrapper
+import SoapySDRWrapper
 import SignalTools
 import TCPUtils
 import Network
@@ -16,7 +16,6 @@ import Darwin
 let MIN_BUFFER_LEN = 96_000
 let DEFAULT_INPUT_SAMPLE_RATE = 288_000
 let DEFAULT_INTERNAL_SAMPLE_RATE = 12000
-let readQueue = DispatchQueue.init(label: "SwiftDSC.readQueue")
 
 class RuntimeState {
     // Args
@@ -68,6 +67,7 @@ enum LaunchArgument: String {
     case saveFile = "-s"
     case help = "-h"
     case relayServer = "-rs"
+    case listDevices = "-ls"
 }
 
 func showHelp() {
@@ -85,6 +85,7 @@ func showHelp() {
     print("  -di <index>     Set SDR device index or host:port for TCP connection -- an rtl_tcp server must be running on the specified host if using TCP.")
     print("  -s <file path>  Save decoded calls to file")
     print("  -rs <port>      Relays rtl_tcp input to specified port (1-65535). Only use this if using SDR over rtl_tcp.")
+    print("  -ls             List devices available via SoapySDR")
     print("")
     print("Examples:")
     print("  SwiftDSC -d -n   Run with debug output and console printing")
@@ -261,6 +262,16 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 exit(64)
             }
         
+        case .listDevices:
+            let devices = SoapyProbe.listDevices()
+            var i = 0
+            print("\n\n--- Device List ---\n\n")
+            for device in devices {
+                print(" -- Device \(i) --\n" + device.description)
+                i += 1
+            }
+            exitWithReason("Pick a device from the above list and use its index with the -di argument to begin.", code: 0)
+        
         default:
             print("Unrecognized argument: \(String(describing: argument))")
             exit(64)
@@ -279,6 +290,7 @@ catch {
 }
 
 func main(state: RuntimeState) throws {
+    _ = SoapyProbe.listDevices()
     if state.offlineSamples != nil {
         try offlineTesting(state: state)
         exit(0)
@@ -288,53 +300,53 @@ func main(state: RuntimeState) throws {
         print("Starting TCP Server for DSC data...")
         state.outputServer?.startServer()
     }
-    
-    let sdr: RTLSDR = try {
-        if state.sdrHost != nil && state.sdrPort != nil {
-            let sdr = try RTLSDR_TCP(host: state.sdrHost!, port: state.sdrPort!)
-            state.relayServer?.associateSDR(sdr: sdr)
+    if(state.relayServer != nil) {
+        print("Starting relay server...")
+        do {
             try state.relayServer?.start()
-            return sdr
         }
-        else {
-            return try RTLSDR_USB(deviceIndex: state.sdrDeviceIndex)
+        catch {
+            print("Failed to start relay server: \(error.localizedDescription)")
         }
-    }()
-    
-    defer {
-        sdr.stopAsyncRead()
     }
     
-    try sdr.setCenterFrequency(VHF_DSC_CENTER_FREQUENCY)
-    try sdr.setDigitalAGCEnabled(state.useDigitalAGC)
-    try sdr.setSampleRate(DEFAULT_INPUT_SAMPLE_RATE)
-    try? sdr.setTunerBandwidth(state.bandwidth) // This won't work on RTLSDR_TCP because it's not implemented yet
-    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_INPUT_SAMPLE_RATE, internalSampleRate: 48000, debugConfig: state.debugConfig)
+    guard let sdr: SoapyDevice = SoapyDevice(int: state.sdrDeviceIndex) else {
+        exitWithReason("Failed to open SDR device at index \(state.sdrDeviceIndex)")
+    }
+    guard sdr.rxNumChannels > 0 else {
+        exitWithReason("SDR has no Rx channels")
+    }
+    
+    sdr.setFrequency(direction: .rx, channel: 0, frequency: Double(VHF_DSC_CENTER_FREQUENCY))
+    if (state.useDigitalAGC) {
+        sdr.setGainMode(direction: .rx, channel: 0, automatic: true)
+    }
+    sdr.setSampleRate(direction: .rx, channel: 0, rate: Double(DEFAULT_INPUT_SAMPLE_RATE))
+    sdr.setBandwidth(direction: .rx, channel: 0, bw: Double(state.bandwidth))
+    let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_INPUT_SAMPLE_RATE, internalSampleRate: DEFAULT_INTERNAL_SAMPLE_RATE, debugConfig: state.debugConfig)
     receiver.setCallEmissionHandler { call in
         handleCall(call, state: state)
     }
     
     var inputBuffer: [DSPComplex] = []
-    
-    readQueue.async {
-        sdr.asyncReadSamples(callback: { (inputData) in
-            guard inputData.count > 16 else {
-                if(state.debugConfig.debugOutput == .extensive) {
-                    print("inputData too short, skipping")
-                }
-                return
+    let streamID = try sdr.asyncReadSamples(channels: [0], callback: { (sampleData: [[ComplexSample]]) in
+        let inputData: [DSPComplex] = sampleData[0].map { DSPComplex(sample: $0) }
+        guard inputData.count > 16 else {
+            if(state.debugConfig.debugOutput == .extensive) {
+                print("inputData too short, skipping")
             }
-            inputBuffer.append(contentsOf: inputData)
-            if(inputBuffer.count >= MIN_BUFFER_LEN) {
-                receiver.processSamples(inputBuffer)
-                if(state.relayServer != nil) {
-                    let transportReadyBytes = inputData.mapForTransportFormat()
-                    state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
-                }
-                inputBuffer = []
+            return
+        }
+        inputBuffer.append(contentsOf: inputData)
+        if(inputBuffer.count >= MIN_BUFFER_LEN) {
+            receiver.processSamples(inputBuffer)
+            if(state.relayServer != nil) {
+                let transportReadyBytes = inputData.mapForTransportFormat()
+                state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
             }
-        })
-    }
+            inputBuffer = []
+        }
+    }); defer { sdr.asyncStopReadingSamples(id: streamID) }
     
     registerSignalHandler()
     atexit_b { // Like 'atexit' but allows for capturing context. who knew?
@@ -378,3 +390,7 @@ func registerSignalHandler() {
     }
 }
 
+func exitWithReason(_ reason: String, code: Int32 = 1) -> Never {
+    print(reason)
+    exit(code)
+}

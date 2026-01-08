@@ -64,7 +64,11 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-"
+            argument = "-di 0"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-d extensive"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

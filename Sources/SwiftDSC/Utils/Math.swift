@@ -7,6 +7,7 @@
 //  Useful math functions for working with signals.
 
 import Accelerate
+import SoapySDRWrapper
 
 func splitArray<T>(_ array: [T], sectionSize: Int) -> [[T]] {
     guard !array.isEmpty else {
@@ -240,5 +241,11 @@ struct ComplexInterleavedTransportFormat {
 extension [DSPComplex] {
     func mapForTransportFormat() -> [ComplexInterleavedTransportFormat] {
         return self.map(ComplexInterleavedTransportFormat.init)
+    }
+}
+
+extension DSPComplex {
+    init(sample: ComplexSample) {
+        self.init(real: sample.real, imag: sample.imag)
     }
 }

@@ -9,7 +9,6 @@ let package = Package(
         .macOS(.v10_15),
     ],
     dependencies: [
-        .package(url: "https://github.com/ConnorGibbons/RTLSDRWrapper", from: "1.0.2"),
         .package(url: "https://github.com/ConnorGibbons/SignalTools", from: "1.1.3"),
         .package(url: "https://github.com/ConnorGibbons/TCPUtils", from: "1.0.4"),
         .package(url: "https://github.com/ConnorGibbons/SoapySDRWrapper", revision: "6a02bf5fa0dbaf9eb533525f5338167e9b9da20f")
@@ -18,7 +17,6 @@ let package = Package(
         .executableTarget(
             name: "SwiftDSC",
             dependencies: [
-                .product(name: "RTLSDRWrapper", package: "RTLSDRWrapper"),
                 .product(name: "SignalTools", package: "SignalTools"),
                 .product(name: "TCPUtils", package: "TCPUtils"),
                 .product(name: "SoapySDRWrapper", package: "SoapySDRWrapper")

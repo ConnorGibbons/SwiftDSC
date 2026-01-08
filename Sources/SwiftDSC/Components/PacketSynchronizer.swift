@@ -8,7 +8,6 @@
 import Accelerate
 import Foundation
 import SignalTools
-import RTLSDRWrapper // for TimeOperation
 
 // VHF DSC Dot Pattern: 0101... 20 bits
 let DOT_PATTERN_CORRELATION_TEMPLATE: [Float] = {

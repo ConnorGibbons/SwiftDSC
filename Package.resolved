@@ -1,15 +1,6 @@
 {
   "pins" : [
     {
-      "identity" : "rtlsdrwrapper",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ConnorGibbons/RTLSDRWrapper",
-      "state" : {
-        "revision" : "9dd86782273d5a8dcd48afb7cc41c85a897b6d7a",
-        "version" : "1.0.2"
-      }
-    },
-    {
       "identity" : "signaltools",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ConnorGibbons/SignalTools",

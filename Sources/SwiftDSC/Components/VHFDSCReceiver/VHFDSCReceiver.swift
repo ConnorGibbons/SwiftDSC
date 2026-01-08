@@ -6,7 +6,6 @@
 //
 
 import Accelerate
-import RTLSDRWrapper
 import SignalTools
 
 /// Enumerates the different states the receiver can be in.

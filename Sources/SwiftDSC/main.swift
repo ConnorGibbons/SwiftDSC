@@ -16,7 +16,6 @@ import Darwin
 let MIN_BUFFER_LEN = 96_000
 let DEFAULT_INPUT_SAMPLE_RATE = 288_000
 let DEFAULT_INTERNAL_SAMPLE_RATE = 12000
-let readQueue = DispatchQueue.init(label: "SwiftDSC.readQueue")
 
 class RuntimeState {
     // Args
@@ -301,6 +300,15 @@ func main(state: RuntimeState) throws {
         print("Starting TCP Server for DSC data...")
         state.outputServer?.startServer()
     }
+    if(state.relayServer != nil) {
+        print("Starting relay server...")
+        do {
+            try state.relayServer?.start()
+        }
+        catch {
+            print("Failed to start relay server: \(error.localizedDescription)")
+        }
+    }
     
     guard let sdr: SoapyDevice = SoapyDevice(int: state.sdrDeviceIndex) else {
         exitWithReason("Failed to open SDR device at index \(state.sdrDeviceIndex)")
@@ -321,11 +329,8 @@ func main(state: RuntimeState) throws {
     }
     
     var inputBuffer: [DSPComplex] = []
-    var sampleCount = 0
-    let t0 = DispatchTime.now()
     let streamID = try sdr.asyncReadSamples(channels: [0], callback: { (sampleData: [[ComplexSample]]) in
         let inputData: [DSPComplex] = sampleData[0].map { DSPComplex(sample: $0) }
-        sampleCount += sampleData.count
         guard inputData.count > 16 else {
             if(state.debugConfig.debugOutput == .extensive) {
                 print("inputData too short, skipping")
@@ -346,9 +351,6 @@ func main(state: RuntimeState) throws {
     registerSignalHandler()
     atexit_b { // Like 'atexit' but allows for capturing context. who knew?
         print("Number of DSC Calls Received: \(state.validCalls.count)")
-        print("Samples: \(sampleCount)")
-        let elapsedTimeSeconds = Double((DispatchTime.now().uptimeNanoseconds - t0.uptimeNanoseconds)) / 1e9
-        print("Sample Rate (Actual): \(Double(sampleCount) / elapsedTimeSeconds)")
     }
     
     let mainThreadBlockingSemaphore = DispatchSemaphore(value: 0)

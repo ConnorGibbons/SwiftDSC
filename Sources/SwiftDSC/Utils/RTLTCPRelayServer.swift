@@ -7,7 +7,7 @@
 import TCPUtils
 import Foundation
 
-/// Note: Functionality of this now limited as RTLSDRWrapper has been replaced.
+/// **Note: Functionality of this now limited as RTLSDRWrapper has been replaced.**
 class RTLTCPRelayServer {
     var server: TCPServer?
 //    var sdr: RTLSDR_TCP?

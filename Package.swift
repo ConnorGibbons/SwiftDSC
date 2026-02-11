@@ -11,7 +11,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/ConnorGibbons/SignalTools", from: "1.1.3"),
         .package(url: "https://github.com/ConnorGibbons/TCPUtils", from: "1.0.4"),
-        .package(url: "https://github.com/ConnorGibbons/SoapySDRWrapper", revision: "6a02bf5fa0dbaf9eb533525f5338167e9b9da20f")
+        .package(url: "https://github.com/ConnorGibbons/SoapySDRWrapper", branch: "main")
     ],
     targets: [
         .executableTarget(

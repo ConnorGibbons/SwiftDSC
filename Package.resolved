@@ -14,7 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ConnorGibbons/SoapySDRWrapper",
       "state" : {
-        "revision" : "6a02bf5fa0dbaf9eb533525f5338167e9b9da20f"
+        "branch" : "main",
+        "revision" : "840d7254f7e43614d16cc8e884e398b77c6e7388"
       }
     },
     {

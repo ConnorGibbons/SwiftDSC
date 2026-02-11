@@ -29,6 +29,7 @@ class RuntimeState {
     var sdrDeviceIndex: Int = 0
     var sdrHost: String? = nil
     var sdrPort: UInt16? = nil
+    var deviceString: String? = nil
     var maxBitFlips: Int = 0
     
     // State
@@ -54,6 +55,7 @@ public enum DebugLevel: Int, Comparable {
     public static func < (lhs: DebugLevel, rhs: DebugLevel) -> Bool {
         return lhs.rawValue < rhs.rawValue
     }
+    
 }
 
 enum LaunchArgument: String {
@@ -68,6 +70,7 @@ enum LaunchArgument: String {
     case help = "-h"
     case relayServer = "-rs"
     case listDevices = "-ls"
+    case deviceString = "-ds"
 }
 
 func showHelp() {
@@ -86,6 +89,7 @@ func showHelp() {
     print("  -s <file path>  Save decoded calls to file")
     print("  -rs <port>      Relays rtl_tcp input to specified port (1-65535). Only use this if using SDR over rtl_tcp.")
     print("  -ls             List devices available via SoapySDR")
+    print("  -ds <string>    Use a custom SoapySDR device string.")
     print("")
     print("Examples:")
     print("  SwiftDSC -d -n   Run with debug output and console printing")
@@ -253,7 +257,7 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 print("-s must be accompanied with a file path (e.g. -s path/to/file.txt)")
                 exit(64)
             }
-        
+            
         case .relayServer:
             currArgIndex += 1
             if let port = UInt16(nextArgument ?? "failPlaceholder") { runtimeState.relayServer = RTLTCPRelayServer(port: port) }
@@ -261,7 +265,7 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 print("Invalid or no port provided to relay server. Allowed values are 1-65535.")
                 exit(64)
             }
-        
+            
         case .listDevices:
             let devices = SoapyProbe.listDevices()
             var i = 0
@@ -271,7 +275,14 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 i += 1
             }
             exitWithReason("Pick a device from the above list and use its index with the -di argument to begin.", code: 0)
-        
+            
+        case .deviceString:
+            currArgIndex += 1
+            if let deviceString = nextArgument { runtimeState.deviceString = deviceString }
+            else {
+                exitWithReason("-ds must be accompanied with a SoapySDR device string (e.g \"driver=remote,remote=tcp:192.168.1.1:55132\")", code: 64)
+            }
+            
         default:
             print("Unrecognized argument: \(String(describing: argument))")
             exit(64)
@@ -295,7 +306,7 @@ func main(state: RuntimeState) throws {
         try offlineTesting(state: state)
         exit(0)
     }
-
+    
     if(state.outputServer != nil) {
         print("Starting TCP Server for DSC data...")
         state.outputServer?.startServer()
@@ -310,46 +321,78 @@ func main(state: RuntimeState) throws {
         }
     }
     
-    guard let sdr: SoapyDevice = SoapyDevice(int: state.sdrDeviceIndex) else {
-        exitWithReason("Failed to open SDR device at index \(state.sdrDeviceIndex)")
+    var sdr: SoapyDevice
+    if(state.deviceString != nil) {
+        do {
+            try sdr = SoapyDevice(stringArgs: state.deviceString!)
+        }
+        catch {
+            exitWithReason("Failed to open SDR with the given device string: \(state.deviceString!)")
+        }
+    }
+    else if(state.sdrHost != nil && state.sdrPort != nil) {
+        var kwargs = SoapyKwargs()
+        kwargs.dict["driver"] = "remote"
+        kwargs.dict["remote"] = "tcp://\(state.sdrHost!):\(state.sdrPort!)"
+        do {
+            try sdr = SoapyDevice(stringArgs: kwargs.dictAsString)
+        }
+        catch {
+            exitWithReason("Failed to open SDR with given IP and port (\(state.sdrHost!):\(state.sdrPort!)) \n kwargs: \(kwargs.dictAsString)")
+        }
+    }
+    else {
+        do {
+            try sdr = SoapyDevice(int: state.sdrDeviceIndex)
+        }
+        catch {
+            exitWithReason("Failed to open SDR at given index (\(state.sdrDeviceIndex)")
+        }
     }
     guard sdr.rxNumChannels > 0 else {
         exitWithReason("SDR has no Rx channels")
     }
     
-    sdr.setFrequency(direction: .rx, channel: 0, frequency: Double(VHF_DSC_CENTER_FREQUENCY))
+    try sdr.setFrequency(direction: .rx, channel: 0, frequency: Double(VHF_DSC_CENTER_FREQUENCY))
     if (state.useDigitalAGC) {
-        sdr.setGainMode(direction: .rx, channel: 0, automatic: true)
+        try sdr.setGainMode(direction: .rx, channel: 0, automatic: true)
     }
-    sdr.setSampleRate(direction: .rx, channel: 0, rate: Double(DEFAULT_INPUT_SAMPLE_RATE))
-    sdr.setBandwidth(direction: .rx, channel: 0, bw: Double(state.bandwidth))
+    try sdr.setSampleRate(direction: .rx, channel: 0, rate: Double(DEFAULT_INPUT_SAMPLE_RATE))
+    try sdr.setBandwidth(direction: .rx, channel: 0, bw: Double(state.bandwidth))
     let receiver = try VHFDSCReceiver(inputSampleRate: DEFAULT_INPUT_SAMPLE_RATE, internalSampleRate: DEFAULT_INTERNAL_SAMPLE_RATE, debugConfig: state.debugConfig)
     receiver.setCallEmissionHandler { call in
         handleCall(call, state: state)
     }
-    
+    var sampleCount = 0
+    let t0 = DispatchTime.now()
     var inputBuffer: [DSPComplex] = []
     let streamID = try sdr.asyncReadSamples(channels: [0], callback: { (sampleData: [[ComplexSample]]) in
         let inputData: [DSPComplex] = sampleData[0].map { DSPComplex(sample: $0) }
+        sampleCount += inputData.count
         guard inputData.count > 16 else {
             if(state.debugConfig.debugOutput == .extensive) {
                 print("inputData too short, skipping")
             }
             return
         }
+        if(state.relayServer != nil) {
+            let transportReadyBytes = inputData.mapForTransportFormat()
+            state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
+        }
         inputBuffer.append(contentsOf: inputData)
         if(inputBuffer.count >= MIN_BUFFER_LEN) {
             receiver.processSamples(inputBuffer)
-            if(state.relayServer != nil) {
-                let transportReadyBytes = inputData.mapForTransportFormat()
-                state.relayServer?.handleSDRData(data: transportReadyBytes.withUnsafeBytes { Data($0) })
-            }
             inputBuffer = []
         }
     }); defer { sdr.asyncStopReadingSamples(id: streamID) }
     
     registerSignalHandler()
     atexit_b { // Like 'atexit' but allows for capturing context. who knew?
+        if(state.debugConfig.debugOutput < .none) {
+            print("Samples: \(sampleCount)")
+            let elapsedTimeSeconds = Double((DispatchTime.now().uptimeNanoseconds - t0.uptimeNanoseconds)) / 1e9
+            print("Sample Rate (Actual): \(Double(sampleCount) / elapsedTimeSeconds)")
+        }
         print("Number of DSC Calls Received: \(state.validCalls.count)")
     }
     

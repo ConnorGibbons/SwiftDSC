@@ -8,7 +8,7 @@ import Foundation
 import Accelerate
 import SoapySDRWrapper
 import SignalTools
-import TCPUtils
+import Networking
 import Network
 import Darwin
 
@@ -214,8 +214,10 @@ func mapCLIArgsToVariables() -> RuntimeState {
                 }
                 let port = UInt16(serverPort)
                 do {
-                    runtimeState.outputServer = try TCPServer(port: port, actionOnNewConnection: { newConnection in
-                        print("New connection to DSC server: \(newConnection.connectionName)")
+                    runtimeState.outputServer = try TCPServer(port: port, maxConnections: 10, actionOnNewConnection: { newConnection in
+                        print("New connection to AIS server: \(newConnection.connectionName)")
+                    }, actionOnReceive: { (connection, data) in
+                        // ignores inbound data
                     })
                 }
                 catch {
@@ -307,9 +309,8 @@ func main(state: RuntimeState) throws {
         exit(0)
     }
     
-    if(state.outputServer != nil) {
+    if(state.outputServer?.port != nil) {
         print("Starting TCP Server for DSC data...")
-        state.outputServer?.startServer()
     }
     if(state.relayServer != nil) {
         print("Starting relay server...")
@@ -366,7 +367,7 @@ func main(state: RuntimeState) throws {
     var sampleCount = 0
     let t0 = DispatchTime.now()
     var inputBuffer: [DSPComplex] = []
-    let streamID = try sdr.asyncReadSamples(channels: [0], callback: { (sampleData: [[ComplexSample]]) in
+    let streamID = try sdr.asyncReadSamples(channels: [0], callback: { (sampleData: [[SoapySDRWrapper.ComplexSample]]) in
         let inputData: [DSPComplex] = sampleData[0].map { DSPComplex(sample: $0) }
         sampleCount += inputData.count
         guard inputData.count > 16 else {
@@ -417,12 +418,7 @@ func handleCall(_ call: DSCCall, state: RuntimeState) {
     }
     
     if let server = state.outputServer {
-        do {
-            try server.broadcastMessage(call.description)
-        }
-        catch {
-            print("Failed to broadcase message: \(error)")
-        }
+        server.broadcastLine(line: call.description, delimiter: "\n")
     }
 }
 

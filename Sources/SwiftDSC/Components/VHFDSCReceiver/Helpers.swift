@@ -6,7 +6,6 @@
 //
 
 import SignalTools
-import Accelerate
 
 extension VHFDSCReceiver {
     
@@ -124,8 +123,8 @@ extension VHFDSCReceiver {
         storeSymbols(symbols)
     }
     
-    func getHighEnergyTimes(_ signal: [DSPComplex]) -> [(Double, Double)] {
-        var samplesToProcess: [[DSPComplex]] = []
+    func getHighEnergyTimes(_ signal: [ComplexSample]) -> [(Double, Double)] {
+        var samplesToProcess: [[ComplexSample]] = []
         if(signal.count > energyDetector.bufferSize) {
             samplesToProcess = splitArray(signal, sectionSize: energyDetector.bufferSize)
         }

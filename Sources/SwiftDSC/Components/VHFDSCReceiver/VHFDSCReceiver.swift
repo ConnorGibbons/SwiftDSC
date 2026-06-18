@@ -5,8 +5,8 @@
 //  Created by Connor Gibbons  on 8/4/25.
 //
 
-import Accelerate
 import SignalTools
+import Foundation
 
 /// Enumerates the different states the receiver can be in.
 /// waiting: Not currently receiving a transmission.
@@ -50,7 +50,7 @@ public class VHFDSCReceiver {
     let inputSampleRate: Int
     let internalSampleRate: Int
     var emittedCallHandler: (DSCCall) -> Void = {
-        print("VHF DSC Call Received \(NSDate().description): \($0.description)")
+        print("VHF DSC Call Received \(Date().description): \($0.description)")
     }
     
     // State
@@ -113,7 +113,7 @@ public class VHFDSCReceiver {
         self.validator = PacketValidator()
     }
     
-    public func processSamples(_ samples: [DSPComplex]) {
+    public func processSamples(_ samples: [ComplexSample]) {
         var samplesMutableCopy = samples
         let preprocessedSamples = self.preprocessor.processSignal(&samplesMutableCopy)
         switch state {

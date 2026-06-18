@@ -3,7 +3,6 @@ import XCTest
 import Foundation
 import RTLSDRWrapper
 import SignalTools
-import Accelerate
 
 
 final class SwiftDSCTests: XCTestCase {

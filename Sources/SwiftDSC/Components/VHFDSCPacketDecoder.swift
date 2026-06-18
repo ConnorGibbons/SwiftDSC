@@ -9,7 +9,6 @@
 
 import Foundation
 import SignalTools
-import Accelerate
 
 /// PacketDecoder for VHF DSC packets -- frequency modulated AFSK.
 /// Uses AFSK demodulator from SignalTools

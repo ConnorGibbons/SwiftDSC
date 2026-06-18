@@ -6,7 +6,6 @@
 //
 import Foundation
 import Dispatch
-import Accelerate
 
 /// Important disclaimer here that "count" really refers to the size of the buffer and *not* how many valid elements are in it.
 class RingBuffer<T> {
@@ -94,7 +93,7 @@ class RingBuffer<T> {
     
 }
 
-extension RingBuffer<DSPComplex> {
+extension RingBuffer<ComplexSample> {
     
     /// Disclaimer: This function is **only** for use with this program (SwiftAIS) because of the unique use case where the buffer is never consumed from except for calculating the magnitude.
     /// As a result, the read head is never moved from it's starting position, and we can use readWriteDiff to determine if the whole buffer is valid or if we should just use the first portion of it.
@@ -104,8 +103,8 @@ extension RingBuffer<DSPComplex> {
         if(readWriteDiff < count) {
             useCount = readWriteDiff
         }
-        let fullBuffer = UnsafeBufferPointer<DSPComplex>(start: self.bufferStartPointer, count: useCount)
-        let fullBufferAsSwiftArray: [DSPComplex] = Array(fullBuffer)
+        let fullBuffer = UnsafeBufferPointer<ComplexSample>(start: self.bufferStartPointer, count: useCount)
+        let fullBufferAsSwiftArray: [ComplexSample] = Array(fullBuffer)
         return fullBufferAsSwiftArray.magnitude()
     }
     

@@ -6,7 +6,6 @@
 //  Tools for working with IQ recordings.
 
 import Foundation
-import Accelerate
 
 // Note: This assumes that file pointer is already at end of file
 func writeCallToFile(_ call: DSCCall, file: FileHandle) {

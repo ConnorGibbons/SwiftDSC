@@ -3,8 +3,7 @@
 //  SwiftDSC
 //
 //  Created by Connor Gibbons  on 8/26/25.
-//
-import Accelerate
+
 import Foundation
 import SignalTools
 
@@ -15,7 +14,7 @@ package class SignalProcessor {
     var rawFilters: [FIRFilter] = []
     var impulseFilters: [FIRFilter] = []
     var angleFilters: [FIRFilter] = []
-    var complexContext: DSPComplex? = nil // Used to provide context for the frequency over time function so the first output isn't dropped.
+    var complexContext: ComplexSample? = nil // Used to provide context for the frequency over time function so the first output isn't dropped.
     
     var debugOutput: Bool
     
@@ -37,13 +36,13 @@ package class SignalProcessor {
         self.debugOutput = debugOutput
     }
     
-    func filterRawSignal(_ signal: inout [DSPComplex]) {
+    func filterRawSignal(_ signal: inout [ComplexSample]) {
         for filter in rawFilters {
             filter.filtfilt(&signal)
         }
     }
     
-    func frequencyOverTime(_ signal: [DSPComplex]) -> [Float] {
+    func frequencyOverTime(_ signal: [ComplexSample]) -> [Float] {
         var input = signal
         if let context = complexContext {
             input.insert(context, at: 0)
@@ -57,7 +56,7 @@ package class SignalProcessor {
         return frequencies
     }
     
-    func angleOverTime(_ signal: [DSPComplex]) -> [Float] {
+    func angleOverTime(_ signal: [ComplexSample]) -> [Float] {
         var angles = [Float].init(repeating: 0, count: signal.count)
         calculateAngle(rawIQ: signal, result: &angles)
         unwrapAngle(&angles)
@@ -67,8 +66,8 @@ package class SignalProcessor {
         return angles
     }
     
-    func correctFrequencyError(signal: [DSPComplex], error: Float) -> [DSPComplex] {
-        var correctedSignal: [DSPComplex] = .init(repeating: DSPComplex(real: 0.0, imag: 0.0), count: signal.count)
+    func correctFrequencyError(signal: [ComplexSample], error: Float) -> [ComplexSample] {
+        var correctedSignal: [ComplexSample] = .init(repeating: ComplexSample(real: 0.0, imag: 0.0), count: signal.count)
         shiftFrequencyToBaseband(rawIQ: signal, result: &correctedSignal, frequency: error, sampleRate: self.sampleRate)
         self.filterRawSignal(&correctedSignal)
         return correctedSignal

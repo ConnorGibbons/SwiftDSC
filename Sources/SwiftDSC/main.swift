@@ -5,7 +5,6 @@
 //  Created by Connor Gibbons  on 8/19/25.
 //
 import Foundation
-import Accelerate
 import SoapySDRWrapper
 import SignalTools
 import Networking
@@ -17,10 +16,12 @@ let MIN_BUFFER_LEN = 96_000
 let DEFAULT_INPUT_SAMPLE_RATE = 288_000
 let DEFAULT_INTERNAL_SAMPLE_RATE = 12000
 
+public typealias ComplexSample = SignalTools.ComplexSample
+
 class RuntimeState {
     // Args
     var debugConfig: DebugConfiguration = DebugConfiguration(debugOutput: .none)
-    var offlineSamples: [DSPComplex]? = nil
+    var offlineSamples: [ComplexSample]? = nil
     var offlineCenterFrequency: Int? = nil
     var offlineSampleRate: Int? = nil
     var outputValidCallsToConsole: Bool = false
@@ -366,9 +367,9 @@ func main(state: RuntimeState) throws {
     }
     var sampleCount = 0
     let t0 = DispatchTime.now()
-    var inputBuffer: [DSPComplex] = []
+    var inputBuffer: [SignalTools.ComplexSample] = []
     let streamID = try sdr.asyncReadSamples(channels: [0], callback: { (sampleData: [[SoapySDRWrapper.ComplexSample]]) in
-        let inputData: [DSPComplex] = sampleData[0].map { DSPComplex(sample: $0) }
+        let inputData: [SignalTools.ComplexSample] = sampleData[0].map { SignalTools.ComplexSample(real: $0.real, imag: $0.imag) }
         sampleCount += inputData.count
         guard inputData.count > 16 else {
             if(state.debugConfig.debugOutput == .extensive) {

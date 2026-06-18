@@ -6,7 +6,6 @@
 //
 import Foundation
 import SignalTools
-import Accelerate
 
 func offlineTesting(state: RuntimeState) throws {
     guard let centerFrequency = state.offlineCenterFrequency, let sampleRate = state.offlineSampleRate, let samples = state.offlineSamples else {
@@ -15,7 +14,7 @@ func offlineTesting(state: RuntimeState) throws {
     }
     
 //    var timer = TimeOperation(operationName: "Preparing data")
-    var centeredDataBuffer: [DSPComplex] = .init(repeating: DSPComplex(real: 0, imag: 0), count: samples.count) // Data frequency shifted to have VHF Channel 70 at 0 Hz
+    var centeredDataBuffer: [ComplexSample] = .init(repeating: ComplexSample(real: 0, imag: 0), count: samples.count) // Data frequency shifted to have VHF Channel 70 at 0 Hz
     shiftFrequencyToBasebandHighPrecision(rawIQ: samples, result: &centeredDataBuffer, frequency: Float(VHF_DSC_CENTER_FREQUENCY - centerFrequency), sampleRate: sampleRate)
 //    print(timer.stop())
     

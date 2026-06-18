@@ -3,14 +3,13 @@
 //  SwiftAIS
 //
 //  Created by Connor Gibbons  on 6/6/25.
-//
-import Accelerate
+
 import SignalTools
 
 package class EnergyDetector {
     let sampleRate: Int
     let resistance: Float // Multiplied by standard deviation to create a threshold. Higher resistance = harder to pass gate
-    var buffer: RingBuffer<DSPComplex>
+    var buffer: RingBuffer<ComplexSample>
     var bufferSize: Int {
         return buffer.count
     }
@@ -23,10 +22,10 @@ package class EnergyDetector {
         self.debugOutput = debugOutput
         self.resistance = resistance ?? 0.5
         if bufferDuration == nil {
-            self.buffer = RingBuffer<DSPComplex>.init(defaultVal: .init(real: 0, imag: 0), size: sampleRate / 2) // 500ms default
+            self.buffer = RingBuffer<ComplexSample>.init(defaultVal: .init(real: 0, imag: 0), size: sampleRate / 2) // 500ms default
         }
         else {
-            self.buffer = RingBuffer<DSPComplex>.init(defaultVal: .init(real: 0, imag: 0), size: Int(Double(sampleRate) * bufferDuration!))
+            self.buffer = RingBuffer<ComplexSample>.init(defaultVal: .init(real: 0, imag: 0), size: Int(Double(sampleRate) * bufferDuration!))
         }
         if windowSize == nil {
             self.windowSize = Int(Double(sampleRate) * 0.025)
@@ -38,7 +37,7 @@ package class EnergyDetector {
         debugPrint("EnergyDetector Window Size: \(self.windowSize); Buffer Len: \(buffer.count) ")
     }
     
-    func addSamples(_ samples: [DSPComplex]) -> [Int] {
+    func addSamples(_ samples: [ComplexSample]) -> [Int] {
         if samples.count > bufferSize {
             debugPrint("Input array cannot be greater than buffer size -- input: \(samples.count), size: \(bufferSize)")
             return []

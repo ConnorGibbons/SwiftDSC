@@ -3,9 +3,7 @@
 //  SwiftDSC
 //
 //  Created by Connor Gibbons  on 8/25/25.
-//
 
-import Accelerate
 import Foundation
 import SignalTools
 
@@ -37,7 +35,7 @@ package class SignalPreprocessor {
     }
     
     // Note that while this returns a new array, it does modify the original!
-    func processSignal(_ signal: inout [DSPComplex]) -> [DSPComplex] {
+    func processSignal(_ signal: inout [ComplexSample]) -> [ComplexSample] {
         filterSignal(&signal)
         let resampled = resampleSignal(signal)
         if(debugOutput){
@@ -46,13 +44,13 @@ package class SignalPreprocessor {
         return resampled
     }
     
-    func filterSignal(_ signal: inout [DSPComplex]) {
+    func filterSignal(_ signal: inout [ComplexSample]) {
         for filt in filters {
             filt.filteredSignal(&signal)
         }
     }
     
-    func resampleSignal(_ signal: [DSPComplex]) -> [DSPComplex] {
+    func resampleSignal(_ signal: [ComplexSample]) -> [ComplexSample] {
         let resampled = downsampler.downsampleComplex(signal)
         return resampled!
     }
